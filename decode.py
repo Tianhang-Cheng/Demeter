@@ -30,6 +30,9 @@ def infer(data_folder:str, sample_name:str, species:str='soybean', **kwargs):
     plant_graph.load(os.path.join(instance_folder, 'graph.pkl'))
     plant_graph.cuda()
 
+    # draw graph structure
+    plant_graph.draw_topology()
+
     with torch.no_grad():
         # align the plant to global X-axis to make it stand straight
         mesh = plant_graph.generate(output_format='mesh', color='gray', align_global=True)

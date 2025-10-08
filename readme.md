@@ -43,7 +43,8 @@ coming soon
 ## Release Plan
 
 - [x] sample data of soybean (2025-10-7)
-- [x] decoding script (2025-10-7)
+- [x] decoding (2025-10-7)
+- [ ] editing (TBD)
 - [ ] sample data of other species (TBD)
 - [ ] reconstruction from 3d point cloud (TBD)
 - [ ] fitting demeter representation from annotated 3d point cloud (TBD)

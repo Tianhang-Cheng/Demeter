@@ -4,7 +4,7 @@ import torch.nn as nn
 import open3d as o3d
 import tqdm
 import copy
-import os
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from easydict import EasyDict as edict
@@ -12,7 +12,7 @@ from utils.pca import NodePCA
 from utils.constant import *
 from utils.rotation_pytorch3d import quaternion_to_matrix, matrix_to_quaternion, standardize_quaternion
 from utils.pcd import grid_to_mesh, get_min_dist, compute_frenet_serret_frame
-from utils.plot import generate_cylinder_along_curve_batch
+from utils.plot import generate_cylinder_along_curve_batch, draw_tree_with_colors
 from utils.graph import find_layers_and_paths
 from representation.primitive import CatmullRomSurface, CatmullRomCurve
 
@@ -134,75 +134,84 @@ class PlantGraphFixedTopology(nn.Module):
                  species='soybean'):
         super().__init__()
 
-        self.layers = layers
         self.classes = classes
         self.parents = parents
+        self.species = species
 
         assert pca_stem_3d is not None, 'we need pca_stem to decode stem shape'
         assert pca_leaf_3d is not None, 'we need pca_leaf to decode leaf shape'
-        self.pca_stem = pca_stem_3d
-        self.pca_leaf = pca_leaf_3d
-        self.species = species
+        self.pca_stem_3d = pca_stem_3d
+        self.pca_leaf_3d = pca_leaf_3d
 
-        self.main_stem = None
-        if layers is not None:
-            self.main_stem = str(layers[0][0])
-
-        self.stem_n_sample = 10
-        self.leaf_w = 43
-        self.leaf_h = 45
-
-        self.set_init_offset = False
-
+        # Some initialization
+        self.layers = find_layers_and_paths(self.parents)[0]
+        self.main_stem = str(self.layers[0][0])
         self.stem_key = []
         self.leaf_key = []
 
+        for layer_idx in range(len(self.layers)):
+            layer = self.layers[layer_idx]
+            for child_k in layer:
+                child_k = str(child_k)
+                if self.classes[child_k] == FLOWER_CLASS or self.classes[child_k] == FRUIT_CLASS:
+                    continue
+                if self.classes[child_k] == STEM_CLASS:
+                    self.stem_key.append(child_k)
+                elif self.classes[child_k] == LEAF_CLASS:
+                    self.leaf_key.append(child_k)
+
+        # hardcoded for now
+        self.leaf_w = 43
+        self.leaf_h = 45
+
+        # empty parameters, just need some function from it
         self._surface = CatmullRomSurface(species=species, shape_pca=pca_leaf_2d)
         self._curve = CatmullRomCurve()
 
-        def coeff_to_leaf(shape_coeff, deform_coeff):
-            a, b, c = self._surface.invert(pca_leaf_3d.decode(deform_coeff).reshape(43, 45, 3))
-            return self._surface.evaluate(main_rotation=a, sub_rotation_l=b, sub_rotation_r=c, shape_coeff=shape_coeff)[0]
-        def coeff_to_stem(deform_coeff):
-            cp = pca_stem_3d.decode(deform_coeff).reshape(-1, 3)
-
-            return cp
-        self.coeff_to_leaf = coeff_to_leaf
-        self.coeff_to_stem = coeff_to_stem
-
-        if parents is None:
-            print('Skip loading parameters')
+        # load parameters from instance fitting
+        if stem_3d_info_cp_local is None:
             return
         
-        if layers is not None:
-            for layer_idx in range(len(layers)):
-                layer = layers[layer_idx]
-                for child_k in layer:
-                    child_k = str(child_k)
+        for layer_idx in range(len(layers)):
+            layer = layers[layer_idx]
+            for child_k in layer:
+                child_k = str(child_k)
 
-                    if classes[child_k] == FLOWER_CLASS or classes[child_k] == FRUIT_CLASS:
-                        continue
+                if classes[child_k] == FLOWER_CLASS or classes[child_k] == FRUIT_CLASS:
+                    continue
 
-                    if classes[child_k] == STEM_CLASS:
-                        self.stem_key.append(child_k)
-                    elif classes[child_k] == LEAF_CLASS:
-                        self.leaf_key.append(child_k)
+                if classes[child_k] == STEM_CLASS:
+                    self.stem_key.append(child_k)
+                elif classes[child_k] == LEAF_CLASS:
+                    self.leaf_key.append(child_k)
 
-                    if classes[child_k] == STEM_CLASS:
-                        self.register_parameter(name=f'cp_w_local_{child_k}', param=_nn_Parameter(stem_3d_info_cp_local[child_k]))
-                        self.register_parameter(name=f'thickness_{child_k}', param=_nn_Parameter(stem_3d_info_thickness[child_k]))
-                        self.register_parameter(name=f'deform_{child_k}', param=_nn_Parameter(stem_3d_info_deform_coeff[child_k]))
-                        self.register_parameter(name=f'scale_{child_k}', param=_nn_Parameter(1/stem_3d_info_s[child_k]))
-                        self.register_parameter(name=f'M_quat_{child_k}', param=_nn_Parameter(stem_3d_info_M_quat[child_k]))
-                    elif classes[child_k] == LEAF_CLASS:
-                        self.register_parameter(name=f'cp_w_local_{child_k}', param=_nn_Parameter(leaf_3d_info_cp_local[child_k]))
-                        self.register_parameter(name=f'shape_{child_k}', param=_nn_Parameter(leaf_3d_info_shape_coeff[child_k]))
-                        self.register_parameter(name=f'deform_{child_k}', param=_nn_Parameter(leaf_3d_info_deform_coeff[child_k]))
-                        self.register_parameter(name=f'scale_{child_k}', param=_nn_Parameter(1/leaf_3d_info_s[child_k]))
-                        self.register_parameter(name=f'M_quat_{child_k}', param=_nn_Parameter(leaf_3d_info_M_quat[child_k]))
-                    # common parameters
-                    self.register_parameter(name=f'length_{child_k}', param=_nn_Parameter(node_length_along_parent_stem[child_k]))
+                if classes[child_k] == STEM_CLASS:
+                    self.register_parameter(name=f'cp_w_local_{child_k}', param=_nn_Parameter(stem_3d_info_cp_local[child_k]))
+                    self.register_parameter(name=f'thickness_{child_k}', param=_nn_Parameter(stem_3d_info_thickness[child_k]))
+                    self.register_parameter(name=f'deform_{child_k}', param=_nn_Parameter(stem_3d_info_deform_coeff[child_k]))
+                    self.register_parameter(name=f'scale_{child_k}', param=_nn_Parameter(1/stem_3d_info_s[child_k]))
+                    self.register_parameter(name=f'M_quat_{child_k}', param=_nn_Parameter(stem_3d_info_M_quat[child_k]))
+                elif classes[child_k] == LEAF_CLASS:
+                    self.register_parameter(name=f'cp_w_local_{child_k}', param=_nn_Parameter(leaf_3d_info_cp_local[child_k]))
+                    self.register_parameter(name=f'shape_{child_k}', param=_nn_Parameter(leaf_3d_info_shape_coeff[child_k]))
+                    self.register_parameter(name=f'deform_{child_k}', param=_nn_Parameter(leaf_3d_info_deform_coeff[child_k]))
+                    self.register_parameter(name=f'scale_{child_k}', param=_nn_Parameter(1/leaf_3d_info_s[child_k]))
+                    self.register_parameter(name=f'M_quat_{child_k}', param=_nn_Parameter(leaf_3d_info_M_quat[child_k]))
+                # common parameters
+                self.register_parameter(name=f'length_{child_k}', param=_nn_Parameter(node_length_along_parent_stem[child_k]))
+
+    def draw_topology(self):
+        print('leaf node is green, stem node is brown, flower is pink, fruit is darkgreen')
+        draw_tree_with_colors(self.parents, c=self.classes)
+
+    def coeff_to_leaf(self, shape_coeff, deform_coeff):
+        a, b, c = self._surface.invert(self.pca_leaf_3d.decode(deform_coeff).reshape(43, 45, 3))
+        return self._surface.evaluate(main_rotation=a, sub_rotation_l=b, sub_rotation_r=c, shape_coeff=shape_coeff)[0]
     
+    def coeff_to_stem(self, deform_coeff):
+        cp = self.pca_stem_3d.decode(deform_coeff).reshape(-1, 3)
+        return cp
+
     def __len__(self):
         return len(self.stem_key) + len(self.leaf_key)
     
@@ -219,32 +228,16 @@ class PlantGraphFixedTopology(nn.Module):
             align_global: bool, align the main stem to global axis
         """
 
-        # for partial visualization
-        current_node_full_articulation = kwargs.get('current_node_full_articulation', True)
-        current_node_full_shape = kwargs.get('current_node_full_shape', True)
-        current_node_full_deform = kwargs.get('current_node_full_deform', True)
+        # for editing
+        # current_node_full_articulation = kwargs.get('current_node_full_articulation', True)
+        # current_node_full_shape = kwargs.get('current_node_full_shape', True)
+        # current_node_full_deform = kwargs.get('current_node_full_deform', True)
         stem_blend_weight = kwargs.get('stem_blend_weight', 1.0)
-        stem_articulation_weight = kwargs.get('stem_articulation_weight', 1.0)
         leaf_shape_blend_weight = kwargs.get('leaf_shape_blend_weight', 1.0)
         leaf_deform_blend_weight = kwargs.get('leaf_deform_blend_weight', 1.0)
         max_processed = kwargs.get('max_processed', 1000)
         edit_id = kwargs.get('edit_id', -1)
 
-        if self.layers is None:
-            self.layers = find_layers_and_paths(self.parents)[0]
-        if self.main_stem is None:
-            self.main_stem = str(self.layers[0][0])
-        if len(self.stem_key) == 0 or len(self.leaf_key) == 0:
-            for layer_idx in range(len(self.layers)):
-                layer = self.layers[layer_idx]
-                for child_k in layer:
-                    child_k = str(child_k)
-                    if self.classes[child_k] == FLOWER_CLASS or self.classes[child_k] == FRUIT_CLASS:
-                        continue
-                    if self.classes[child_k] == STEM_CLASS:
-                        self.stem_key.append(child_k)
-                    elif self.classes[child_k] == LEAF_CLASS:
-                        self.leaf_key.append(child_k)
 
         layers = self.layers
         classes = self.classes
@@ -294,26 +287,25 @@ class PlantGraphFixedTopology(nn.Module):
                 if count >= max_processed:
                     break
 
-                # is_current_processed = (count == max_processed-1) or all_the_same
                 is_current_processed = (count == edit_id)
                 
                 # get relative information
                 s = self.__getattr__(f'scale_{child_k}')
                 M = quaternion_to_matrix(self.__getattr__(f'M_quat_{child_k}'))
                 
-                if not current_node_full_articulation and is_current_processed:
+                if is_current_processed:
                     if classes[child_k] == STEM_CLASS:
                         s = stem_mean_scale
                     elif classes[child_k] == LEAF_CLASS:
                         s = leaf_mean_scale
                 
-                if not current_node_full_articulation and is_current_processed:
+                if is_current_processed:
                     M = torch.eye(3).float().cuda()
 
                 if child_k != main_stem:
                     l = self.__getattr__(f'length_{child_k}')
                     l = torch.clip(l, 0.0, 1.0)
-                    if not current_node_full_articulation and is_current_processed:
+                    if is_current_processed:
                         l = torch.tensor(0.0).float().cuda()
 
                     _pp = pcd_stem[xp]
@@ -368,7 +360,7 @@ class PlantGraphFixedTopology(nn.Module):
                     pcd_stem[child_k] = p.reshape(-1, 3)
 
                     if 'instance' in output_format or 'mesh' in output_format:
-                        if is_current_processed and not current_node_full_shape:
+                        if is_current_processed:
                             p_viz = generate_cylinder_along_curve_batch(p, 0.0002, k=32) # FIXME: hardcoded thickness
                         else:
                             p_viz = generate_cylinder_along_curve_batch(p, thickness, k=32)
