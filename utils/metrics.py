@@ -30,51 +30,23 @@ def get_chamfer_distance(gt_pcd, pred_pcd, normalize=True):
     print('Chamfer distance:', mean_cd)
     return mean_cd
 
-def get_demeter_model_size(fit_folder, ignore_stem=False, ignore_surface=False):
-    total_parameters_count = 0
-    pths_path = glob.glob(fit_folder + '/*.pth')
+def intersection_and_union_gpu(output, target, semantic:int):
+    # 'K' classes, output and target sizes are N or N * L or N * H * W, each value in range 0 to K - 1.
+    if not isinstance(output, torch.Tensor):
+        output = torch.tensor(output).cuda()
+    if not isinstance(target, torch.Tensor):
+        target = torch.tensor(target).cuda()
+    assert output.dim() in [1, 2, 3]
+    assert output.shape == target.shape
+    output = output.view(-1)
+    target = target.view(-1)
 
-    for pth_path in pths_path:
-        model = torch.load(pth_path, weights_only=True) # is a dict
+    area_intersection = ((output == semantic) & (target == semantic)).sum().reshape(1)
+    area_output = (output == semantic).sum().reshape(1)
+    area_target = (target == semantic).sum().reshape(1)
+    area_union = area_output + area_target - area_intersection
 
-        # leaf: dict_keys(['quat', 's', 'dw', 'main_rotation', 'sub_rotation_left', 'sub_rotation_right'])
-            # pca coeff: dw, main_rotation, sub_rotation_left, sub_rotation_right
-            # non-pca coeff: quat, s
-        # stem: dict_keys(['s', 'l', 'main_rotation', 'thickness', 'quat'])
-
-        num = 0
-
-        shape_pca_n_params = 8 # papaya is 8
-        shape_pca_n_params = 9 # soybean is 8
-        deform_pca_n_params = 18 # FIXME: check this, soybean is 12
-
-        # stem
-        if 's' in model.keys() and 'l' in model.keys():
-            print('model {} is a curve'.format(pth_path))
-            if ignore_stem:
-                continue
-            num += 1 # s (scale)
-            num += 3 # quat (rotation)
-            num += 1 # translation
-            num += 2 # graph connection
-            raise NotImplementedError
-        # leaf
-        else:
-            print('model {} is a surface'.format(pth_path))
-            if ignore_surface:
-                continue
-            num += 1 # s (scale)
-            num += 3 # quat (rotation)
-            num += 1 # translation
-            num += 2 # graph connection
-            num += shape_pca_n_params # shape pca
-            for key in model.keys():
-                if 'rot' in key:
-                    if isinstance(model[key], torch.Tensor):
-                        num += model[key].numel()
-            # num += deform_pca_n_params
-        total_parameters_count += num
-
-    # calculate KB for the float32 parameters
-    KB = total_parameters_count * 4 / 1024
-    print('Total number of parameters: {}, Total size: {} KB'.format(total_parameters_count, KB))
+    area_intersection = area_intersection.detach().cpu().numpy()
+    area_union = area_union.detach().cpu().numpy()
+    area_target = area_target.detach().cpu().numpy()
+    return area_intersection, area_union, area_target

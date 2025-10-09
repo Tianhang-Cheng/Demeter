@@ -25,7 +25,7 @@ def make_axis(R, R_align, t, size=0.005):
     return _axis_viz
 
 def build_plant_graph(species:str, meta_name:str, parents:edict, classes:edict, curves:edict, surfaces:edict, fit_folder:str,
-                      pca_stem_3d, pca_leaf_3d,
+                      pca_stem_3d, pca_leaf_3d, pca_leaf_2d,
                       main_stem_end_points_bottom, connected_template_pcd, node_axis_along_parent_stem_all, n_iter:int=300, lr=5e-3, **kwargs):
     """
     Build a plant graph from the given components, and fit to the original position from separate instance fits.
@@ -34,7 +34,7 @@ def build_plant_graph(species:str, meta_name:str, parents:edict, classes:edict, 
     retrain = kwargs.get('retrain', False)
     
     # empty template
-    empty_surface = CatmullRomSurface(species=species)
+    empty_surface = CatmullRomSurface(species=species, shape_pca=pca_leaf_2d)
     empty_curve = CatmullRomCurve()
 
     layers, paths = find_layers_and_paths(parents)
@@ -316,7 +316,7 @@ def build_plant_graph(species:str, meta_name:str, parents:edict, classes:edict, 
         instance_points_dict[str(int(_name))] = points
         # instance_colors_dict[str(int(_name))] = np.asarray(pcd.colors)
     
-    plant_graph = PlantGraphFixedTopology(layers, classes, parents, pca_stem_3d, pca_leaf_3d,
+    plant_graph = PlantGraphFixedTopology(layers, classes, parents, pca_stem_3d, pca_leaf_3d, pca_leaf_2d,
                                         stem_3d_info_cp_local, stem_3d_info_thickness,   stem_3d_info_deform_coeff, stem_3d_info_s, stem_3d_info_M_quat, 
                                         leaf_3d_info_cp_local, leaf_3d_info_shape_coeff, leaf_3d_info_deform_coeff, leaf_3d_info_s, leaf_3d_info_M_quat, 
                                         node_length_along_parent_stem, species=species).to('cuda')
