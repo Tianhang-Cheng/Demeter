@@ -20,6 +20,12 @@ this requires the user to annoate 2 keypoints on the main stem (one bottom, one 
 Predict semantics and SDF between clusters using Point-Transformer (under Point transformer conda envrionment).
 This process may take ~1 minutes
 
+1. download pretrained weight from [Google Drive](https://drive.google.com/file/d/1u962buCv6sEjkZHZkxf7FgHzi391b_49/view?usp=sharing)
+
+2. extract exp.zip to ```third_party/PointTransformer_V3/Pointcept/exp```
+
+3. run command
+
 ```bash
 
 conda activate pointcept
