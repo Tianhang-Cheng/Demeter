@@ -27,6 +27,11 @@ conda activate pointcept
 cd third_party/PointTransformerV3/Pointcept
 
 sh scripts/test.sh -p python -d soybean3d -c custom3 -n plant3 -g 1 -w model_last
+
+# copy the result from PointTransformer to data folder
+cp third_party/PointTransformerV3/Pointcept/exp/soybean3d/plant3/result/normalized_pcd_pred_dist.npy sample_point_cloud/val/65_i
+cp third_party/PointTransformerV3/Pointcept/exp/soybean3d/plant3/result/normalized_pcd_pred.npy sample_point_cloud/val/65_i
+
 ```
 
 ## Step 3: build plant graph from prediction
