@@ -1,0 +1,6 @@
+soybean:
+    27_o
+    65_i
+
+maize:
+    10008da

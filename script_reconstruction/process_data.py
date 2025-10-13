@@ -112,8 +112,12 @@ def process_data(path: str):
     assert os.path.exists(point_path), f"{point_path} does not exist!"
 
     # read data
-    points_all = np.array(o3d.io.read_point_cloud(point_path).points)
-    colors_all = np.array(o3d.io.read_point_cloud(point_path).colors)
+    input_pcd = o3d.io.read_point_cloud(point_path)
+    points_all = np.array(input_pcd.points)
+    colors_all = np.array(input_pcd.colors)
+
+    if len(colors_all) == 0:
+        colors_all = np.ones_like(points_all) * 0.5 # gray
 
     # center and scale
     points_all_center = points_all - points_all.mean(axis=0)
@@ -139,7 +143,7 @@ def process_data(path: str):
 
         R = rotate_vector_to_target(vector)[-1]
 
-        rotated_coords = points_all @ R.T
+        rotated_coords = (points_all - points_all.mean(axis=0)) @ R.T
         pcd_new = o3d.geometry.PointCloud()
         pcd_new.points = o3d.utility.Vector3dVector(rotated_coords)
         pcd_new.colors = pcd_temp.colors
@@ -156,6 +160,8 @@ def process_data(path: str):
     else:
 
         rotation = np.loadtxt(rot_path).astype(np.float32)
+
+        selected_coords = np.loadtxt(os.path.join(os.path.dirname(point_path), 'rotation_click.txt')).astype(np.float32)
 
     # pcd = o3d.geometry.PointCloud()
     # pcd.points = o3d.utility.Vector3dVector(geometries_points @ rotation)
@@ -178,8 +184,6 @@ def process_data(path: str):
     pcd_final.points = o3d.utility.Vector3dVector(geometries_points / radius)
     pcd_final.colors = o3d.utility.Vector3dVector(geometries_colors)
     pcd_final.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
-    # axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1, origin=[0, 0, 0])
-    # o3d.visualization.draw_geometries([pcd_final, axis])
 
     geometries_normals = np.array(pcd_final.normals)
 
@@ -202,7 +206,29 @@ def process_data(path: str):
     torch.save(data, os.path.join(os.path.dirname(point_path), 'normalized_pcd.pth'))
     print(f"Saved to {os.path.join(os.path.dirname(point_path), 'normalized_pcd.pth')}")
 
+    # save as ply
+    pcd_final.translate(-((selected_coords[0] - bbox_center) @ rotation / radius)) # slight translation for better visualization
+    o3d.io.write_point_cloud(os.path.join(os.path.dirname(point_path), 'original_aligned.ply'), pcd_final)
+    # visualize pcd_final
+    axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1, origin=[0, 0, 0])
+    o3d.visualization.draw_geometries([pcd_final, axis], window_name='Aligned Point Cloud')
+
 if __name__ == '__main__':
+
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--point_path', type=str, default=None, help='path to input point cloud')
+    args = parser.parse_args()
+
+    if args.point_path is not None:
+        process_data(args.point_path)
+        exit(0)
 
     point_id = '65_i'
     process_data(f'sample_point_cloud/val/{point_id}/pcd.ply')
+
+    # point_id = '27_o'
+    # process_data(f'sample_point_cloud/val/{point_id}/pcd.ply')
+
+    # point_id = '10008da'
+    # process_data(f'sample_point_cloud/val/{point_id}/pcd.ply')

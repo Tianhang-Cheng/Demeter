@@ -43,8 +43,23 @@ def infer(data_folder:str, sample_name:str, species:str='soybean', **kwargs):
 
 if __name__ == "__main__":
 
-    data_folder = 'sample_data'
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--data_folder', type=str, default='sample_params', help='path to the folder containing the sample parameters')
+    parser.add_argument('--sample_name', type=str, default=None, help='name of the sample to process')
+    parser.add_argument('--species', type=str, default='soybean', help='species of the plant')
+    args = parser.parse_args()
 
+    data_folder = args.data_folder
+    sample_name = args.sample_name
+    species = args.species
+
+    if sample_name is not None:
+        infer(data_folder, sample_name, species)
+        exit(0)
+
+
+    data_folder = 'sample_params'
     infer(data_folder, '24_o', 'soybean')
 
     # sample_names = ['3_o', '3_i', '4_o', '4_i', '6_o',  '8_i', '24_o', '101_o']

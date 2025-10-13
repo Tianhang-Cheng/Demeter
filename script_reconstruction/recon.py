@@ -824,6 +824,15 @@ def reconstruction_3d(folder, species='soybean', **kwargs):
 
 if __name__ == '__main__':
 
+    import argparse
+    parser = argparse.ArgumentParser()
+    # parser.add_argument('--retrain', action='store_true', help='whether to retrain the whole model')
+    # parser.add_argument('--retrain_leaf', action='store_true', help='whether to retrain the leaf models')
+    # parser.add_argument('--retrain_stem', action='store_true', help='whether to retrain the stem models')
+    # parser.add_argument('--do_viz', action='store_true', help='whether to visualize intermediate steps')
+    parser.add_argument('--species', type=str, default='soybean', help='plant species')
+    parser.add_argument('--data_folder', type=str, default=None, help='data folder name under sample_point_cloud')
+    args = parser.parse_args()
 
     kwargs = {
         'retrain': False,
@@ -832,12 +841,15 @@ if __name__ == '__main__':
         'do_viz': True, # visualize intermediate steps
     }
 
-    plant_id = '65_i'
+    data_folder = args.data_folder
+    if data_folder is not None:
+        reconstruction_3d(data_folder, species=args.species, **kwargs)
+        exit(0)
 
-    species = 'soybean'
-    folder = f'sample_point_cloud/val/{plant_id}'
 
-    reconstruction_3d(folder, species=species, **kwargs)
+    # example usage
+    data_folder = f'sample_point_cloud/val/65_i'
+    reconstruction_3d(data_folder, species='soybean', **kwargs)
     # reconstruction_3d('27_o', species='soybean', **kwargs)
     # reconstruction_3d('15_i', species='soybean', **kwargs)
 

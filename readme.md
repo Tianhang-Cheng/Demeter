@@ -36,13 +36,16 @@ the sample data is already included in the code.
 decode demeter parameter to 3d mesh of soybean
 
 ```python
-python decode.py
+python decode.py --data_folder sample_params --sample_name 24_o --species soybean
 ```
 
 ## Reconstruction from point cloud
 
-For detailed instructions on reconstructing Demeter representations from raw 3D point clouds, see [script_reconstruction/readme.md](script_reconstruction/readme.md).
+Raw 3D point clouds -> Demeter parameters \
+[script_reconstruction/readme.md](script_reconstruction/readme.md)
 
+Raw 3D point clouds -> L-system parameteres \
+[third_party/CropCraft/readme.md](third_party/CropCraft/readme.md)
 
 ## Release Plan
 
@@ -53,7 +56,7 @@ For detailed instructions on reconstructing Demeter representations from raw 3D 
 - [x] reconstruction from 3d point cloud (2025-10-8)
 - [ ] fitting demeter representation from annotated 3d point cloud (TBD)
 - [ ] learning leaf shape PCA from 2D leaf scanns (TBD)
-- [ ] L-system baseline (TBD)
+- [x] L-system baseline (2025-10-13)
 - [ ] full soybean 3d dataset (TBD)
 
 ## Acknowledgement
