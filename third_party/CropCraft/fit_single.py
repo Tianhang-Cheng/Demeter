@@ -244,9 +244,12 @@ def reconstruct(species, pcd_path:str, save_path:str, bo_max_iter=150, bo_init_p
     mesh.triangles = o3d.utility.Vector3iVector(best_fac)
     # mesh.rotate(global_rotation, center=(0, 0, 0))
     mesh.compute_vertex_normals()
-    mesh.paint_uniform_color([0.5, 0., 0.])
+    # mesh.paint_uniform_color([0.5, 0., 0.])
+    # paint gray
+    mesh.paint_uniform_color([0.5, 0.5, 0.5])
 
-    o3d.visualization.draw_geometries([mesh, target_pcd, axis], mesh_show_back_face=True)
+    # o3d.visualization.draw_geometries([mesh, target_pcd, axis], mesh_show_back_face=True)
+    o3d.visualization.draw_geometries([mesh], mesh_show_back_face=True)
 
     return mesh
 

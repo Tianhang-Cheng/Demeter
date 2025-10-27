@@ -224,7 +224,7 @@ if __name__ == '__main__':
         process_data(args.point_path)
         exit(0)
 
-    point_id = '65_i'
+    point_id = '2_i'
     process_data(f'sample_point_cloud/val/{point_id}/pcd.ply')
 
     # point_id = '27_o'

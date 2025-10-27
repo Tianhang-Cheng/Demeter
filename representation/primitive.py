@@ -609,9 +609,7 @@ class CatmullRomSurface():
         self.sub_rotation_left.data[..., 0] = np.pi / 2
         self.sub_rotation_right.data[..., 0] = np.pi / 2
 
-        # sigma = np.loadtxt('/home/tianhang/data/folio/Folio Leaf Dataset/Folio/papaya_rotated_mask/inner_pca_sigma.txt')
-        # sigma = np.loadtxt(f'/home/tianhang/data/folio/Folio Leaf Dataset/Folio/{pca_species}_rotated_mask/info/inner_pca_sigma.txt')
-        sigma = np.loadtxt(f'/home/tianhang/data/folio/Folio Leaf Dataset/Folio/{pca_species}_rotated_mask/skeleton_pca_sigma.txt')
+        sigma = np.loadtxt(f'sample_params/{pca_species}/2d_leaf_pca_sigma.txt') 
         self.shape_sigma = torch.tensor(sigma, dtype=torch.float, device='cuda')[:, None]
 
         self.fitted = False
