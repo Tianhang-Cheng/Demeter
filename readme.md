@@ -16,10 +16,11 @@ Demeter is a plant parametric models that is learned from 3D scans of real-world
 + Pytorch 2.5.0
 
 ### Dependencies
-Install PyTorch (not included here) and other dependencies:
+Install PyTorch and other dependencies.
 ```bash
 conda create -n demeter python=3.11 -y
 conda activate demeter
+pip install torch==2.5.0 torchvision==0.20.0 torchaudio==2.5.0 --index-url https://download.pytorch.org/whl/cu121
 
 # basic dependencies for decoding
 pip install -r requirements.txt
@@ -37,6 +38,14 @@ decode demeter parameter to 3d mesh of soybean
 
 ```python
 python decode.py --data_folder sample_params --sample_name 24_o --species soybean
+
+python decode.py --data_folder sample_params --sample_name 08 --species ribes 
+
+python decode.py --data_folder sample_params --sample_name 10008da --species maize
+
+python decode.py --data_folder sample_params --sample_name 1 --species tobacco
+
+python decode.py --data_folder sample_params --sample_name 02 --species rose
 ```
 
 ## Reconstruction from point cloud

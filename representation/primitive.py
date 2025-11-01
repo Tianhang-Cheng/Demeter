@@ -572,12 +572,6 @@ class CatmullRomSurface():
         
         self.species = species
 
-        pca_species = species
-        if species == 'ribes':
-            pca_species = 'papaya' # FIXME: we use papaya pca for ribes
-        if species == 'rose' or species == 'pepper' or species == 'tobacco' or species == 'maize':
-            pca_species = 'soybean'
-
         self.pca = shape_pca
         assert self.pca is not None, 'Please provide shape_pca'
         
@@ -609,7 +603,7 @@ class CatmullRomSurface():
         self.sub_rotation_left.data[..., 0] = np.pi / 2
         self.sub_rotation_right.data[..., 0] = np.pi / 2
 
-        sigma = np.loadtxt(f'sample_params/{pca_species}/2d_leaf_pca_sigma.txt') 
+        sigma = np.loadtxt(f'sample_params/{species}/2d_leaf_pca_sigma.txt') 
         self.shape_sigma = torch.tensor(sigma, dtype=torch.float, device='cuda')[:, None]
 
         self.fitted = False
