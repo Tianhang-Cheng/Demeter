@@ -7,9 +7,9 @@ from representation.graph import PlantGraphFixedTopology
 from utils.pca import NodePCA
 from utils.graph import load_parent, load_class
     
-def infer(data_folder:str, sample_name:str, species:str='soybean', **kwargs):
+def decode_params(data_folder:str, sample_name:str, species:str='soybean', **kwargs):
 
-    instance_folder = os.path.join(data_folder, species, sample_name)
+    instance_folder = os.path.join(data_folder, species, 'instances', sample_name)
 
     # load class annotation
     classes = load_class(os.path.join(instance_folder, 'info','class.txt'))
@@ -31,7 +31,8 @@ def infer(data_folder:str, sample_name:str, species:str='soybean', **kwargs):
     plant_graph.cuda()
 
     # draw graph structure
-    plant_graph.draw_topology()
+    if kwargs.get('draw_graph', False):
+        plant_graph.draw_topology()
 
     with torch.no_grad():
         # align the plant to global X-axis to make it stand straight
@@ -43,11 +44,14 @@ def infer(data_folder:str, sample_name:str, species:str='soybean', **kwargs):
 
 if __name__ == "__main__":
 
+    # example usage 1
+    # use argparse to parse the command line arguments
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_folder', type=str, default='sample_params', help='path to the folder containing the sample parameters')
     parser.add_argument('--sample_name', type=str, default=None, help='name of the sample to process')
     parser.add_argument('--species', type=str, default='soybean', help='species of the plant')
+    parser.add_argument('--draw_graph', action='store_true', help='whether to draw the graph structure')
     args = parser.parse_args()
 
     data_folder = args.data_folder
@@ -55,15 +59,13 @@ if __name__ == "__main__":
     species = args.species
 
     if sample_name is not None:
-        infer(data_folder, sample_name, species)
+        decode_params(data_folder, sample_name, species)
         exit(0)
-
-
+    
+    # example usage 2
     data_folder = 'sample_params'
-    infer(data_folder, '24_o', 'soybean')
-
-    # sample_names = ['3_o', '3_i', '4_o', '4_i', '6_o',  '8_i', '24_o', '101_o']
-    # for sample_name in sample_names:
-    #     print(f'Processing {sample_name} ...')
-    #     infer(data_folder, sample_name, 'soybean')
-    #     break
+    decode_params(data_folder, '24_o', 'soybean') # '3_o', '3_i', '4_o', '4_i', '6_o',  '8_i', '24_o', '101_o' etc.
+    decode_params(data_folder, '1', 'tobacco')
+    decode_params(data_folder, '02', 'rose')
+    decode_params(data_folder, '10008da', 'maize')
+    decode_params(data_folder, '08', 'ribes')

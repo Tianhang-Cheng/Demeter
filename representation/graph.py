@@ -350,13 +350,15 @@ class PlantGraphFixedTopology(nn.Module):
                     #     cp = self.coeff_to_stem(stem_blend_weight * self.__getattr__(f'deform_{child_k}')) @ M @ M_p
                     # else:
                     # cp = self.coeff_to_stem(stem_blend_weight * self.__getattr__(f'deform_{child_k}')) @ M @ M_p
-                    cp = self.coeff_to_stem((stem_blend_weight if is_current_processed else 1.0) * self.__getattr__(f'deform_{child_k}')) @ M @ M_p
+                    edit_coeff = stem_blend_weight if is_current_processed else 1.0
+                    cp = self.coeff_to_stem(edit_coeff * self.__getattr__(f'deform_{child_k}')) @ M @ M_p # with editing
+                    cp_original = self.coeff_to_stem(self.__getattr__(f'deform_{child_k}')) @ M @ M_p # no editing
 
                     cp = cp * s
                     p = cp # no need to interpolate
                     p = p + offset
 
-                    axis_on_parent[child_k] = compute_frenet_serret_frame(cp, repeats=1)[0:p.shape[0]]
+                    axis_on_parent[child_k] = compute_frenet_serret_frame(cp_original, repeats=1)[0:p.shape[0]]
                     pcd_stem[child_k] = p.reshape(-1, 3)
 
                     if 'instance' in output_format or 'mesh' in output_format:
