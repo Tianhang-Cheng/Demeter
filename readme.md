@@ -1,12 +1,24 @@
 # Demeter: A Parametric Model of Crop Plant Morphology from the Real World (ICCV 2025)
 
-[Project Page](https://tianhang-cheng.github.io/Demeter-project.github.io/) | [Dataset (Coming soon)]()
+[Project Page](https://tianhang-cheng.github.io/Demeter-project.github.io/) | [Mesh Dataset](https://drive.google.com/file/d/1OLa7JXfgj3QGRKKB0nxhRyndsH_peiaY/view?usp=sharing)
 
 <img src="assets/teaser.png" alt="Demeter " width="600">
 
 Demeter is a plant parametric models that is learned from 3D scans of real-world plants. It explicitly models the plant as a graph of stem and leaf.
 
-## Requirements
+## 1. Data
+
+### Processed data
+
+The processed 3d parametric plant samples are already included in the code.
+
+### Raw data
+
+The raw soybean mesh data can be found in this [google drive link](https://drive.google.com/file/d/1OLa7JXfgj3QGRKKB0nxhRyndsH_peiaY/view?usp=sharing). It contains 607 unprocessed meshes, which can be used for 3D generation/representation learning. The main stem are aligned to y-axis and the bottom tip lies in (0,0,0). We will release the correspondent 2D images soon.
+
+<img src="assets/dataset_row.png" alt="Demeter " width="600">
+
+## 2. Requirements
 
 ### Environment (Tested)
 
@@ -28,11 +40,9 @@ pip install -r requirements.txt
 
 for reconstruction from 3d point cloud, it is recommended to create a new envrionment following instruction in [Pointcept](https://github.com/Pointcept/Pointcept)
 
-## Data
+## 3. Usage
 
-the sample data is already included in the code.
-
-## Decode fitted parametric plant
+### Decode fitted parametric plant
 
 decode demeter parameter to 3d mesh of soybean
 
@@ -48,7 +58,7 @@ python decode.py --data_folder sample_params --sample_name 1 --species tobacco
 python decode.py --data_folder sample_params --sample_name 02 --species rose
 ```
 
-## Reconstruction from point cloud
+### Reconstruction from point cloud
 
 Raw 3D point clouds -> Demeter parameters \
 [script_reconstruction/readme.md](script_reconstruction/readme.md)
@@ -56,7 +66,7 @@ Raw 3D point clouds -> Demeter parameters \
 Raw 3D point clouds -> L-system parameteres \
 [third_party/CropCraft/readme.md](third_party/CropCraft/readme.md)
 
-## Release Plan
+## 4. Release Plan
 
 - [x] sample data of soybean (2025-10-7)
 - [x] decoding (2025-10-7)
@@ -66,11 +76,12 @@ Raw 3D point clouds -> L-system parameteres \
 - [ ] building demeter representation from your own annotated 3d point cloud (TBD)
 - [ ] learning leaf shape PCA from 2D leaf scanns (TBD)
 - [x] L-system baseline (2025-10-13)
-- [ ] full soybean 3d dataset (TBD)
+- [x] full soybean 3d dataset (2025-12-17)
+- [x] full soybean 2d image dataset (TBD)
 
-## Acknowledgement
+## 5. Acknowledgement
 This project is supported by NSF Awards #1847334 #2331878, #2340254, #2312102, #2414227, and #2404385. We greatly appreciate the NCSA for providing computing resources.
 
-## License
+## 6. License
 This code is released under the **Academic Research License (Non-Commercial)**.  
 For commercial inquiries, please contact [shenlong@illinois.edu](mailto:shenlong@illinois.edu).
