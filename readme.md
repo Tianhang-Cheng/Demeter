@@ -77,7 +77,7 @@ Raw 3D point clouds -> L-system parameteres \
 - [ ] learning leaf shape PCA from 2D leaf scanns (TBD)
 - [x] L-system baseline (2025-10-13)
 - [x] full soybean 3d dataset (2025-12-17)
-- [x] full soybean 2d image dataset (TBD)
+- [ ] full soybean 2d image dataset (TBD)
 
 ## 5. Acknowledgement
 This project is supported by NSF Awards #1847334 #2331878, #2340254, #2312102, #2414227, and #2404385. We greatly appreciate the NCSA for providing computing resources.
