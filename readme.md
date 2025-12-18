@@ -1,6 +1,6 @@
 # Demeter: A Parametric Model of Crop Plant Morphology from the Real World (ICCV 2025)
 
-[Project Page](https://tianhang-cheng.github.io/Demeter-project.github.io/) | [Mesh Dataset](https://drive.google.com/file/d/1OLa7JXfgj3QGRKKB0nxhRyndsH_peiaY/view?usp=sharing)
+[Project Page](https://tianhang-cheng.github.io/Demeter/) | [Mesh Dataset](https://drive.google.com/file/d/1OLa7JXfgj3QGRKKB0nxhRyndsH_peiaY/view?usp=sharing)
 
 <img src="assets/teaser.png" alt="Demeter " width="600">
 
