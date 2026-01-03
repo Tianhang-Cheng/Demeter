@@ -42,7 +42,7 @@ for reconstruction from 3d point cloud, it is recommended to create a new envrio
 
 ## 3. Usage
 
-### Decode fitted parametric plant
+### a) Visualize parametric plant
 
 decode demeter parameter to 3d mesh of soybean
 
@@ -58,9 +58,15 @@ python decode.py --data_folder sample_params --sample_name 1 --species tobacco
 python decode.py --data_folder sample_params --sample_name 02 --species rose
 ```
 
-### Reconstruction from point cloud
+### b) Reconstruction parametric plant from point cloud
 
-Raw 3D point clouds -> Demeter parameters \
+Monocular RGB video -> Raw 3D point clouds \
+[script_video2mesh/readme.md](script_video2mesh/readme.md)
+
+Raw 3D point clouds -> Annotated 3D point clouds \
+*Coming soon*
+
+Annotated 3D point clouds -> Demeter parameters \
 [script_reconstruction/readme.md](script_reconstruction/readme.md)
 
 Raw 3D point clouds -> L-system parameteres \

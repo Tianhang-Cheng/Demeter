@@ -1,2 +1,6 @@
 *__pycache__*
 *.ipynb
+
+third_party/2d-gaussian-splatting/install
+
+/sample_video/001
