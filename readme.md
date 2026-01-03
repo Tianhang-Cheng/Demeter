@@ -61,7 +61,7 @@ python decode.py --data_folder sample_params --sample_name 02 --species rose
 ### b) Reconstruction parametric plant from point cloud
 
 Monocular RGB video -> Raw 3D point clouds \
-[script_video2mesh/readme.md](script_video2mesh/readme.md)
+[third_party/2d-gaussian-splatting/readme.md](third_party/2d-gaussian-splatting/readme.md)
 
 Raw 3D point clouds -> Annotated 3D point clouds \
 *Coming soon*
@@ -71,6 +71,10 @@ Annotated 3D point clouds -> Demeter parameters \
 
 Raw 3D point clouds -> L-system parameteres \
 [third_party/CropCraft/readme.md](third_party/CropCraft/readme.md)
+
+### c) Simulation
+
+Please refer to [Helios Tutorial](https://plantsimulationlab.github.io/Helios/_tutorials.html) for now. Detailed tutorial is coming soon.
 
 ## 4. Release Plan
 
