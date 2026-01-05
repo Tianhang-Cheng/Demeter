@@ -120,4 +120,6 @@ if __name__ == "__main__":
             decimated_mesh = mesh
         o3d.io.write_triangle_mesh(os.path.join(train_dir, name.replace('.ply', '_decimated.ply')), decimated_mesh)
         # remove 'fuse_post.ply'
-        # os.remove(final_mesh_path)
+        os.remove(final_mesh_path)
+        print("mesh removed at {}".format(final_mesh_path))
+        print("decimated mesh saved at {}".format(os.path.join(train_dir, name.replace('.ply', '_decimated.ply'))))

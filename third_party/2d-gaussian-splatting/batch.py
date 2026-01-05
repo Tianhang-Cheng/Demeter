@@ -1,8 +1,8 @@
 import subprocess
 from pathlib import Path
 
-VIDEO_DIR = Path("G:/drive-download-20260102T212517Z-1-001")          # folder containing .mp4 files
-OUTPUT_ROOT = Path("G:/drive-download-20260102T212517Z-1-001")        # where xxx/input, xxx/outputs live
+VIDEO_DIR = Path("G:/drive-download-20260103T224221Z-1-001")          # folder containing .mp4 files
+OUTPUT_ROOT = Path("G:/drive-download-20260103T224221Z-1-001")        # where xxx/input, xxx/outputs live
 FPS = 10
 ITERATIONS = 15000
 
@@ -23,13 +23,15 @@ def process_video(video_path: Path):
         "python", "extract_frames.py",
         "--video_path", str(video_path.resolve()),
         "--output_dir", str(input_dir.resolve()),
-        "--target_fps", str(FPS)
+        "--target_fps", str(FPS),
+        "--scale_ratio", "0.5" # downscale frames to half size
     ], cwd=GS_DIR)
 
     # 2. Run SfM
     run([
         "python", "convert.py",
-        "-s", str(scene_dir.resolve())
+        "-s", str(scene_dir.resolve()),
+        "--colmap_executable", "D:/COLMAP/COLMAP.bat",
     ], cwd=GS_DIR)
 
     # 3. Train 2DGS

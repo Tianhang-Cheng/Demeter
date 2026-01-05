@@ -1,8 +1,16 @@
 # reconstruction 2dgs and extract mesh from video
 
-## Install Environment
+## Dependency Requirements
 
-please follow [https://github.com/hbb1/2d-gaussian-splatting]([2DGS](https://github.com/hbb1/2d-gaussian-splatting))
+The pipeline was tested on Windows 10.
+
+(1) COLMAP
+
+For COLMAP, please follow [this link](https://github.com/colmap/colmap?tab=readme-ov-file) to get the excutable file.
+
+(2) 2DGS
+
+please follow [this link](https://github.com/hbb1/2d-gaussian-splatting)
 
 ## Run SfM
 
@@ -11,10 +19,12 @@ please follow [https://github.com/hbb1/2d-gaussian-splatting]([2DGS](https://git
 cd third_party/2d-gaussian-splatting
 
 # extract frames (the output folder should have name 'input')
-python extract_frames.py --video_path ../../sample_video/001.mp4 --output_dir ../../sample_video/001/input --target_fps 10
+# scale_ratio means the image is scaled
+python extract_frames.py --video_path ../../sample_video/001.mp4 --output_dir ../../sample_video/001/input --target_fps 10 --scale_ratio 0.5
 
-# Run sfm to get camera poses (may takes minutes depending on the resolution and video length)
-python convert.py -s ../../sample_video/001
+# Run sfm to get camera poses (change to your COLMAP.bat path (tesed on Windows))
+# may takes minutes depending on the resolution and video length
+python convert.py -s ../../sample_video/001 --colmap_executable "D:/COLMAP/COLMAP.bat"
 ```
 
 ## Train 2DGS
@@ -32,7 +42,7 @@ python render.py -s ../../sample_video/001 -m ../../sample_video/001 --skip_test
 the output mesh will be found in ```sample_video\001\train\ours_5000\fuse_decimated.ply```
 
 <p align="center">
-  <img src="../../assets/2dgs.jpg" alt="Description">
+  <img src="../../assets/2dgs.png" alt="Description">
   The reconstruction result of 2DGS.
 </p>
 

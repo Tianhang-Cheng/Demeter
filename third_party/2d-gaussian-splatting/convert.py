@@ -20,11 +20,13 @@ parser.add_argument("--no_gpu", action='store_true')
 parser.add_argument("--skip_matching", action='store_true')
 parser.add_argument("--source_path", "-s", required=True, type=str)
 parser.add_argument("--camera", default="OPENCV", type=str)
-parser.add_argument("--colmap_executable", default="D:/COLMAP/COLMAP.bat", type=str)
+parser.add_argument("--colmap_executable", default="D:/COLMAP/COLMAP.bat", type=str, required=True)
+parser.add_argument("--glomap_executable", default=None, type=str)
 parser.add_argument("--resize", action="store_true")
 parser.add_argument("--magick_executable", default="", type=str)
 args = parser.parse_args()
 colmap_command = '"{}"'.format(args.colmap_executable) if len(args.colmap_executable) > 0 else "colmap"
+glomap_command = '"{}"'.format(args.glomap_executable) if args.glomap_executable is not None else "glomap" # not used
 magick_command = '"{}"'.format(args.magick_executable) if len(args.magick_executable) > 0 else "magick"
 use_gpu = 1 if not args.no_gpu else 0
 
@@ -52,14 +54,22 @@ if not args.skip_matching:
         logging.error(f"Feature matching failed with code {exit_code}. Exiting.")
         exit(exit_code)
 
-    ### Bundle adjustment
+    ## Bundle adjustment
     # The default Mapper tolerance is unnecessarily large,
     # decreasing it speeds up bundle adjustment steps.
-    mapper_cmd = (colmap_command + " mapper \
-        --database_path " + args.source_path + "/distorted/database.db \
-        --image_path "  + args.source_path + "/input \
-        --output_path "  + args.source_path + "/distorted/sparse \
-        --Mapper.ba_global_function_tolerance=0.000001")
+    if args.glomap_executable is not None:
+        print("Using GloMap for mapping.")
+        mapper_cmd = (glomap_command + " mapper \
+            --database_path " + args.source_path + "/distorted/database.db \
+            --image_path "  + args.source_path + "/input \
+            --output_path "  + args.source_path + "/distorted/sparse")
+    else:
+        print("Using COLMAP for mapping.")
+        mapper_cmd = (colmap_command + " mapper \
+            --database_path " + args.source_path + "/distorted/database.db \
+            --image_path "  + args.source_path + "/input \
+            --output_path "  + args.source_path + "/distorted/sparse \
+            --Mapper.ba_global_function_tolerance=0.000001")
     exit_code = os.system(mapper_cmd)
     if exit_code != 0:
         logging.error(f"Mapper failed with code {exit_code}. Exiting.")
