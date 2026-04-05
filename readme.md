@@ -74,7 +74,7 @@ Raw 3D point clouds -> L-system parameteres \
 
 ### c) Simulation
 
-Please refer to [Helios Tutorial](https://plantsimulationlab.github.io/Helios/_tutorials.html) for now. Detailed tutorial is coming soon.
+Please refer to [Helios Tutorial](https://github.com/PlantSimulationLab/PyHelios/blob/master/docs/plugin_photosynthesis.md) for now.
 
 ## 4. Release Plan
 
@@ -93,5 +93,6 @@ Please refer to [Helios Tutorial](https://plantsimulationlab.github.io/Helios/_t
 This project is supported by NSF Awards #1847334 #2331878, #2340254, #2312102, #2414227, and #2404385. We greatly appreciate the NCSA for providing computing resources.
 
 ## 6. License
-This code is released under the **Academic Research License (Non-Commercial)**.  
-For commercial inquiries, please contact [shenlong@illinois.edu](mailto:shenlong@illinois.edu).
+This code is released under the **Academic Research License (Non-Commercial)**.
+For commercial inquiries, please contact [shenlong@illinois.edu](mailto:shenlong@illinois.edu). 
+For code issue and academic collaboration, please contact [tcheng12@illinois.edu](mailto:tcheng12@illinois.edu).
