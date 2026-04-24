@@ -9,7 +9,7 @@ The input sample point cloud.
 ```bash
 
 # process raw point cloud to align the main stem of input point cloud to X-axis, and the bottom tip to origin.
-python script_reconstruction/process_data.py --point_path sample_point_cloud/val/27_o/pcd.ply
+python script_auto_reconstruction/process_data.py --point_path sample_point_cloud/val/27_o/pcd.ply
 
 # change point cloud path in fit_single based on your need
 # you will get original_aligned.ply from above step

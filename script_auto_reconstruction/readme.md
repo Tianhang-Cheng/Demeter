@@ -2,13 +2,12 @@
 
 note: this is a optimization based method, which highly rely on the quality of the input point cloud and cannot handle missing part of the raw data.
 
-
 ## Step 1: normalized point cloud
 
 This script will normalize the data into mean offset and unit scale. And it requires manually click two points on the main stem to find the direction. First click should be on the bottom (yellow dot), second should be on the top (blue dot).
 
 ```bash
-python script_reconstruction/process_data.py --point_path sample_point_cloud/val/27_o/pcd.ply
+python utils/process_data.py --point_path sample_point_cloud/val/27_o/pcd.ply
 ```
 <img src="../assets/before_annotate.png" alt="Demeter " width="300">
 
@@ -49,7 +48,7 @@ use the demeter conda environment.
 ```bash
 conda activate demeter
 
-python script_reconstruction/recon.py --data_folder sample_point_cloud/val/65_i --species soybean
+python recon.py --data_folder sample_point_cloud/val/65_i --species soybean
 ```
 
 ### Visualization (if do_viz=True)

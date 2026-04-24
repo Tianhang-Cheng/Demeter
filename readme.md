@@ -38,7 +38,13 @@ pip install torch==2.5.0 torchvision==0.20.0 torchaudio==2.5.0 --index-url https
 pip install -r requirements.txt
 ```
 
-for reconstruction from 3d point cloud, it is recommended to create a new envrionment following instruction in [Pointcept](https://github.com/Pointcept/Pointcept)
+Install in editable mode
+
+```
+pip install -e .
+```
+
+for reconstruction from 3d point cloud, it is recommended to create a new envrionment following instruction in [Pointcept](https://github.com/Pointcept/Pointcept). But we recommend using manual annotation to create demeter parameters for now.
 
 ## 3. Usage
 
@@ -60,16 +66,22 @@ python decode.py --data_folder sample_params --sample_name 02 --species rose
 
 ### b) Reconstruction parametric plant from point cloud
 
++ Step 1: Get point cloud
 Monocular RGB video -> Raw 3D point clouds \
 [third_party/2d-gaussian-splatting/readme.md](third_party/2d-gaussian-splatting/readme.md)
 
-Raw 3D point clouds -> Annotated 3D point clouds \
-*Coming soon*
++ Step 2, Option A: manual annotate point clouds -> Demeter parameters \
+[script_manual_annotation/readme.md](script_manual_annotation/readme.md)
 
-Annotated 3D point clouds -> Demeter parameters \
-[script_reconstruction/readme.md](script_reconstruction/readme.md)
++ Step 2, Option B: automatic multi-stage 3D point clouds -> Demeter parameters \
+[script_auto_reconstruction/readme.md](script_auto_reconstruction/readme.md)
+this method is not accurate, so it's more recommanded to use manual segementation
 
-Raw 3D point clouds -> L-system parameteres \
++ Step 2, Option C: automatic feed-forward one-pass 3D point clouds -> Demeter parameters \
+
+working in progress.
+
++ Others: raw 3D point clouds -> baseline L-system parameteres \
 [third_party/CropCraft/readme.md](third_party/CropCraft/readme.md)
 
 ### c) Simulation

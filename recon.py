@@ -1,8 +1,3 @@
-import sys
-import os
-script_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.dirname(script_dir))
-
 import torch
 import open3d as o3d
 import numpy as np
@@ -59,10 +54,18 @@ def reconstruction_3d(folder, species='soybean', **kwargs):
     pca_stem_3d = NodePCA(path=os.path.join(data_folder, '3d_stem_pca.pth'))
     pca_leaf_3d = NodePCA(path=os.path.join(data_folder, '3d_leaf_pca.pth'))
 
-    transform_dict = pickle.load(open(os.path.join(folder, 'transform.pkl'), 'rb'))
-    viz_rotation = transform_dict['rotation']
-    viz_radius = transform_dict['radius']
-    viz_center = transform_dict['bbox_center']
+    transform_path = os.path.join(folder, 'transform.pkl')
+    if not os.path.exists(transform_path):
+        viz_rotation = np.eye(3)
+        viz_radius = 1.0
+        viz_center = np.zeros(3)
+        # raise a warning here
+        print(f"Warning: transform.pkl not found in {folder}, using default visualization parameters")
+    else:
+        transform_dict = pickle.load(open(os.path.join(folder, 'transform.pkl'), 'rb'))
+        viz_rotation = transform_dict['rotation']
+        viz_radius = transform_dict['radius']
+        viz_center = transform_dict['bbox_center']
 
     # load input coordiantes
     model_path = os.path.join(folder, 'normalized_pcd.pth')
@@ -821,7 +824,6 @@ def reconstruction_3d(folder, species='soybean', **kwargs):
 
     print('Saved plant graph to {}'.format(graph_save_path))
  
-
 if __name__ == '__main__':
 
     import argparse

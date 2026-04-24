@@ -205,24 +205,6 @@ def load_parent(path: str):
             parents[str(int(child))] = int(parent)
     return parents
 
-def load_parent(path: str):
-    # load parent annotation
-    parents = edict()
-    UNIQUE_ROOT = 0
-    if os.path.exists(path):
-        with open(path, 'r') as f:
-            lines = f.readlines()
-        for line in lines:
-            child, parent = line.strip().split('->')
-            # assert classes.get(str(int(parent))) == STEM_CLASS or int(parent) == -1, 'The parent should be stem or no parent'
-            if int(parent) == -1:
-                assert UNIQUE_ROOT == 0, 'There should be only one root'
-                UNIQUE_ROOT += 1
-            parents[str(int(child))] = int(parent)
-    else:
-        raise ValueError('Parent file not found: %s' % path)
-    return parents
-
 def save_parent(parents, path):
     with open(path, 'w') as f:
         for k, v in parents.items():
@@ -234,10 +216,10 @@ def load_class(path):
         with open(path, 'r') as f:
             lines = f.readlines()
         for index, line in enumerate(lines):
+            if not line.strip():
+                continue
             name, _class = line.strip().split(' ')
             classes[str(name)] = int(_class)
-    else:
-        raise ValueError('Class file not found: %s' % path)
     return classes
 
 def save_class(classes, path):

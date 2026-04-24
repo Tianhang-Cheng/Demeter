@@ -6,3 +6,7 @@ third_party/2d-gaussian-splatting/install
 /sample_video/001
 
 /third_party/glomap-x64-windows-cuda
+
+demeter.egg-info
+
+\build_dynamic
