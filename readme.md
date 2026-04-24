@@ -95,7 +95,7 @@ Please refer to [Helios Tutorial](https://github.com/PlantSimulationLab/PyHelios
 - [ ] editing tutorial (TBD)
 - [x] sample data of other species (2025-11-1)
 - [x] reconstruction from 3d point cloud (2025-10-8)
-- [ ] building demeter representation from your own annotated 3d point cloud (TBD)
+- [x] building demeter representation from your own annotated 3d point cloud (2026-4-24)
 - [ ] learning leaf shape PCA from 2D leaf scanns (TBD)
 - [x] L-system baseline (2025-10-13)
 - [x] full soybean 3d dataset (2025-12-17)
