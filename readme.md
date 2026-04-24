@@ -75,11 +75,10 @@ Monocular RGB video -> Raw 3D point clouds \
 
 + Step 2, Option B: automatic multi-stage 3D point clouds -> Demeter parameters \
 [script_auto_reconstruction/readme.md](script_auto_reconstruction/readme.md)
-this method is not accurate, so it's more recommanded to use manual segementation
+Note that this method is not accurate, so it's more recommanded to use manual segementation
 
 + Step 2, Option C: automatic feed-forward one-pass 3D point clouds -> Demeter parameters \
-
-working in progress.
+Working in progress.
 
 + Others: raw 3D point clouds -> baseline L-system parameteres \
 [third_party/CropCraft/readme.md](third_party/CropCraft/readme.md)
