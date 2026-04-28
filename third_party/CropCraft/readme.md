@@ -12,14 +12,14 @@ The input sample point cloud.
 python script_auto_reconstruction/normalize_data.py --point_path sample_point_cloud/val/27_o/pcd.ply
 
 # change point cloud path in fit_single based on your need
-# you will get original_aligned.ply from above step
-python third_party/CropCraft/fit_single.py --point_path sample_point_cloud/val/27_o/original_aligned.ply --species soybean
+# you will get pcd_unit_radius.ply from above step
+python third_party/CropCraft/fit_single.py --point_path sample_point_cloud/val/27_o/pcd_unit_radius.ply --species soybean
 ```
 
 ```bash
 # another example for maize
 python script_auto_reconstruction/normalize_data.py --point_path sample_point_cloud/val/10008da/pcd.ply
-python third_party/CropCraft/fit_single.py --point_path sample_point_cloud/val/10008da/original_aligned.ply --species maize
+python third_party/CropCraft/fit_single.py --point_path sample_point_cloud/val/10008da/pcd_unit_radius.ply --species maize
 ```
 
 <img src="../../assets/lsys_soybean.png" alt="Demeter " width="300">

@@ -30,7 +30,9 @@ def build_plant_graph(
         curves:edict, surfaces:edict,
         pca_stem_3d, pca_leaf_3d, pca_leaf_2d,
         main_stem_end_points_bottom, connected_template_pcd, 
-        node_axis_along_parent_stem_all, n_iter:int=300, lr=5e-3, **kwargs
+        node_axis_along_parent_stem_all, n_iter:int=300, lr=5e-3,
+        full_plant_pcd_path:str=None,
+        **kwargs
     ):
     """
     Build a plant graph from the given components, and fit to the original position from separate instance fits.
@@ -275,7 +277,7 @@ def build_plant_graph(
     #     o3d.visualization.draw_geometries([axis] +  pcd_viz_stem + pcd_viz_leaf)
     
     # ground-truth raw point cloud 
-    full_plant = o3d.io.read_point_cloud(os.path.join(mesh_dir, 'original_aligned.ply'))
+    full_plant = o3d.io.read_point_cloud(full_plant_pcd_path)
     full_plant.translate(-main_stem_end_points_bottom)
 
     instance_points_dict = edict()

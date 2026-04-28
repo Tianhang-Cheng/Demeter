@@ -217,7 +217,7 @@ def process_data(path: str, no_scale: bool = False):
 
     # save as ply
     pcd_final.translate(-((selected_coords[0] - bbox_center) @ rotation / scale_divisor)) # slight translation for better visualization
-    o3d.io.write_point_cloud(os.path.join(os.path.dirname(point_path), 'original_aligned.ply'), pcd_final)
+    o3d.io.write_point_cloud(os.path.join(os.path.dirname(point_path), 'pcd_unit_radius.ply'), pcd_final)
     # visualize pcd_final
     axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1, origin=[0, 0, 0])
     o3d.visualization.draw_geometries([pcd_final, axis], window_name='Aligned Point Cloud')

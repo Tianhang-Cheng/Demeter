@@ -272,11 +272,11 @@ if __name__ == '__main__':
 
     # example usage
     # soybean
-    pcd_path = '/home/tianhang/code/Demeter/sample_point_cloud/val/27_o/original_aligned.ply' # TODO: change to your path
+    pcd_path = '/home/tianhang/code/Demeter/sample_point_cloud/val/27_o/pcd_unit_radius.ply' # TODO: change to your path
     save_path = os.path.join(os.path.dirname(pcd_path), 'l_sys', f'best_params.pkl')
     reconstruct('soybean', pcd_path, save_path, retrain=False)
 
     # maize
-    pcd_path = '/home/tianhang/code/Demeter/sample_point_cloud/val/10008da/original_aligned.ply' # TODO: change to your path
+    pcd_path = '/home/tianhang/code/Demeter/sample_point_cloud/val/10008da/pcd_unit_radius.ply' # TODO: change to your path
     save_path = os.path.join(os.path.dirname(pcd_path), 'l_sys', f'best_params.pkl')
     reconstruct('maize', pcd_path, save_path, retrain=False)

@@ -100,14 +100,26 @@ def rotate_vector_to_target(P, target=[1, 0, 0]):
     
     return rotated, theta, rotation_axis, R
 
-def process_data(path: str):
+_AXIS_TARGET = {
+    "x": np.array([1.0, 0.0, 0.0]),
+    "y": np.array([0.0, 1.0, 0.0]),
+    "z": np.array([0.0, 0.0, 1.0]),
+}
+
+
+def process_data(path: str, align_axis: str = "x"):
 
     """
     Process point cloud data.
 
     First click maps to the origin; the segment from first to second click maps onto the
-    positive x-axis (distance between clicks is preserved). No uniform scaling is applied.
+    positive half-axis given by align_axis (x, y, or z). Distance between clicks is preserved.
+    No uniform scaling is applied.
     """
+
+    align_axis = align_axis.lower()
+    assert align_axis in _AXIS_TARGET, f"align_axis must be one of x, y, z; got {align_axis!r}"
+    target_axis = _AXIS_TARGET[align_axis]
 
     print(f"Processing {path}")
 
@@ -132,9 +144,14 @@ def process_data(path: str):
         pcd_temp = o3d.geometry.PointCloud()
         pcd_temp.points = o3d.utility.Vector3dVector(geometries_points)
         pcd_temp.colors = o3d.utility.Vector3dVector(geometries_colors)
-        blue_print("Select two points (Ctrl+click): first -> origin, second -> +x axis; then close the window.")
+        axis_hint = {"x": "+x", "y": "+y", "z": "+z"}[align_axis]
+        blue_print(
+            f"Select two points (Ctrl+click): first -> origin, second -> {axis_hint} axis; then close the window."
+        )
         selected_indices, selected_coords = interactive(pcd_temp)
-        assert len(selected_coords) >= 2, "Select at least two points (first = origin, second = +x direction)."
+        assert len(selected_coords) >= 2, (
+            f"Select at least two points (first = origin, second = {axis_hint} direction)."
+        )
 
         click0 = selected_coords[0]
         vector = selected_coords[1] - selected_coords[0]
@@ -142,7 +159,7 @@ def process_data(path: str):
         assert vnorm > 1e-9, "The two clicks must be distinct."
         vector = vector / vnorm
 
-        R = rotate_vector_to_target(vector)[-1]
+        R = rotate_vector_to_target(vector, target=target_axis)[-1]
 
         rotated_coords = (points_all - click0) @ R.T
         pcd_new = o3d.geometry.PointCloud()
@@ -181,52 +198,13 @@ def process_data(path: str):
     geometries_points = (geometries_points - click0.astype(np.float32))
     geometries_points = geometries_points @ rotation
 
-    transform_dict = {
-        'rotation': rotation,
-        'bbox_center': click0.astype(np.float32),
-        'radius': radius,
-        'normalize_divisor': scale_divisor,
-    }
-    with open(os.path.join(os.path.dirname(point_path), 'transform.pkl'), 'wb') as f:
-        pickle.dump(transform_dict, f)
-
     pcd_final = o3d.geometry.PointCloud()
     pcd_final.points = o3d.utility.Vector3dVector(geometries_points / scale_divisor)
     pcd_final.colors = o3d.utility.Vector3dVector(geometries_colors)
     pcd_final.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
 
-    geometries_normals = np.array(pcd_final.normals)
-
-    # save for training
-    data = {}
-    data['coord'] = geometries_points.astype(np.float32) / scale_divisor
-    data['color'] = geometries_colors.astype(np.float32)
-    data['normal'] = geometries_normals.astype(np.float32)
-    
-    sample_num = 300000
-    sample_num = min(sample_num, len(data['coord']))
-    sample_mask = np.random.choice(len(data['coord']), sample_num, replace=False)
-    for key in data.keys():
-        data[key] = data[key][sample_mask]
-    data = {k: torch.tensor(v) for k, v in data.items()}
-    
-    data['scene_id'] = os.path.basename(os.path.dirname(point_path)) # can be any string, required by point-transformer
-
-    # save as pth
-    torch.save(data, os.path.join(os.path.dirname(point_path), 'normalized_pcd.pth'))
-    print(f"Saved to {os.path.join(os.path.dirname(point_path), 'normalized_pcd.pth')}")
-
-    # save as ply (first click already at origin; second on +x)
-    o3d.io.write_point_cloud(os.path.join(os.path.dirname(point_path), 'original_aligned.ply'), pcd_final)
+    # save as ply (first click already at origin; second on chosen positive axis)
+    o3d.io.write_point_cloud(os.path.join(os.path.dirname(point_path), f'pcd_{align_axis.lower()}_aligned.ply'), pcd_final)
     # visualize pcd_final
     axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1, origin=[0, 0, 0])
     o3d.visualization.draw_geometries([pcd_final, axis], window_name='Aligned Point Cloud')
-
-if __name__ == '__main__':
-
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--point_path', type=str, default=None, help='path to input point cloud')
-    args = parser.parse_args()
-
-    process_data(args.point_path)

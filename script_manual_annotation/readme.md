@@ -2,12 +2,12 @@
 
 note: this is a manual annotation method to create "ground-truth" Demeter prameters. It's accurate but time consuming.
 
-## Step 0: align stem to X axis and normalized point cloud
+## Step 0: align stem and normalized point cloud
 
-This script will only align main stem to X axis ([1, 0, 0]) but **no scaling**. And it requires manually click two points on the main stem to find the direction. First click should be **exactly** on the main stem bottom (yellow dot), second should be on another point near the top (blue dot), but no need to be exact.
+This script will only align main stem to Y axis ([0, 1, 0]) but **no scaling**. And it requires manually click two points on the main stem to find the direction. First click should be **exactly** on the main stem bottom (yellow dot), second should be on another point near the top (blue dot), but no need to be exact.
 
 ```bash
-python script_manual_annotation/align_data.py --point_path sample_point_cloud/val/7/pcd.ply
+python script_manual_annotation/align_data.py --point_path sample_point_cloud/val/7/pcd.ply --align_axis y
 ```
 
 Since the point cloud from SfM or 2DGS usually has different scale from the real-world, we recommend to scale the input pcd to the real-world metric (like meters) by yourself before running this. 

@@ -793,7 +793,9 @@ def reconstruction_3d(folder, species='soybean', **kwargs):
                                     n_iter=250,
                                     lr=1e-3,
                                     return_graph=True,
-                                    retrain=retrain)
+                                    retrain=retrain,
+                                    full_plant_pcd_path=os.path.join(folder, 'pcd_unit_radius.ply'),
+                                    )
     plant_graph.save(graph_save_path)
 
     with torch.no_grad():

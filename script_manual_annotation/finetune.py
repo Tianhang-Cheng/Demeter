@@ -186,7 +186,8 @@ def finetune(mesh_dir, species='soybean', **kwargs):
         node_axis_along_parent_stem_all=node_axis_along_parent_stem_all, 
         retrain=kwargs.get('retrain', False),
         visualize=kwargs.get('visualize', False),
-        n_iter=300
+        n_iter=300,
+        full_plant_pcd_path=os.path.join(mesh_dir, 'pcd_y_aligned.ply'),
     )
 
 if __name__ == "__main__":
