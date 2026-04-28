@@ -64,7 +64,7 @@ def reconstruction_3d(folder, species='soybean', **kwargs):
     else:
         transform_dict = pickle.load(open(os.path.join(folder, 'transform.pkl'), 'rb'))
         viz_rotation = transform_dict['rotation']
-        viz_radius = transform_dict['radius']
+        viz_radius = transform_dict.get('normalize_divisor', transform_dict['radius'])
         viz_center = transform_dict['bbox_center']
 
     # load input coordiantes

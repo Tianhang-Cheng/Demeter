@@ -100,10 +100,13 @@ def rotate_vector_to_target(P, target=[1, 0, 0]):
     
     return rotated, theta, rotation_axis, R
 
-def process_data(path: str):
+def process_data(path: str, no_scale: bool = False):
 
     """
-    Process point cloud data
+    Process point cloud data.
+
+    If no_scale is True, centering and rotation are unchanged but coordinates are not divided
+    by the 95th-percentile radius (original physical scale is kept).
     """
 
     print(f"Processing {path}")
@@ -124,7 +127,8 @@ def process_data(path: str):
     radius = np.linalg.norm(points_all_center, axis=-1)
     radius = np.sort(radius)
     radius = radius[int(len(radius) * 0.95)] # find radius in 95% percentile
-    
+    scale_divisor = 1.0 if no_scale else float(radius)
+
     geometries_points = points_all.astype(np.float32)
     geometries_colors = colors_all.astype(np.float32)
 
@@ -176,12 +180,17 @@ def process_data(path: str):
     # geometries_points = geometries_points / bbox_radius
     geometries_points = geometries_points @ rotation
 
-    transform_dict = {'rotation': rotation, 'bbox_center': bbox_center, 'radius': radius}
+    transform_dict = {
+        'rotation': rotation,
+        'bbox_center': bbox_center,
+        'radius': radius,
+        'normalize_divisor': scale_divisor,
+    }
     with open(os.path.join(os.path.dirname(point_path), 'transform.pkl'), 'wb') as f:
         pickle.dump(transform_dict, f)
 
     pcd_final = o3d.geometry.PointCloud()
-    pcd_final.points = o3d.utility.Vector3dVector(geometries_points / radius)
+    pcd_final.points = o3d.utility.Vector3dVector(geometries_points / scale_divisor)
     pcd_final.colors = o3d.utility.Vector3dVector(geometries_colors)
     pcd_final.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
 
@@ -189,7 +198,7 @@ def process_data(path: str):
 
     # save for training
     data = {}
-    data['coord'] = geometries_points.astype(np.float32) / radius
+    data['coord'] = geometries_points.astype(np.float32) / scale_divisor
     data['color'] = geometries_colors.astype(np.float32)
     data['normal'] = geometries_normals.astype(np.float32)
     
@@ -207,7 +216,7 @@ def process_data(path: str):
     print(f"Saved to {os.path.join(os.path.dirname(point_path), 'normalized_pcd.pth')}")
 
     # save as ply
-    pcd_final.translate(-((selected_coords[0] - bbox_center) @ rotation / radius)) # slight translation for better visualization
+    pcd_final.translate(-((selected_coords[0] - bbox_center) @ rotation / scale_divisor)) # slight translation for better visualization
     o3d.io.write_point_cloud(os.path.join(os.path.dirname(point_path), 'original_aligned.ply'), pcd_final)
     # visualize pcd_final
     axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1, origin=[0, 0, 0])
@@ -218,14 +227,19 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--point_path', type=str, default=None, help='path to input point cloud')
+    parser.add_argument(
+        '--no-scale',
+        action='store_true',
+        help='keep original scale after centering and rotation (do not divide by 95%% radius)',
+    )
     args = parser.parse_args()
 
     if args.point_path is not None:
-        process_data(args.point_path)
+        process_data(args.point_path, no_scale=args.no_scale)
         exit(0)
 
     point_id = '2_i'
-    process_data(f'sample_point_cloud/val/{point_id}/pcd.ply')
+    process_data(f'sample_point_cloud/val/{point_id}/pcd.ply', no_scale=False)
 
     # point_id = '27_o'
     # process_data(f'sample_point_cloud/val/{point_id}/pcd.ply')

@@ -2,24 +2,21 @@
 
 note: this is a manual annotation method to create "ground-truth" Demeter prameters. It's accurate but time consuming.
 
-## Step 0: normalize pcd
+## Step 0: align stem to X axis and normalized point cloud
 
-This script will normalize the data into mean offset and unit scale. And it requires manually click two points on the main stem to find the direction. First click should be on the bottom (yellow dot), second should be on the top (blue dot).
+This script will normalize the data into mean offset and unit scale (95% points will within [−1,1]³), also align the main stem to X axis ([1, 0, 0]). And it requires manually click two points on the main stem to find the direction. First click should be **exactly** on the main stem bottom (yellow dot), second should be on another point near the top (blue dot), but no need to be exact. 
 
 ```bash
-python utils/process_data.py --point_path sample_point_cloud/val/7/pcd.ply
+python script_manual_annotation/normalize_data.py --point_path sample_point_cloud/val/27_o/pcd.ply --no_no_scale
 ```
-<img src="../assets/before_annotate.png" alt="Demeter " width="300">
-
-this requires the user to annoate 2 keypoints on the main stem (one bottom, one top) like the above image. 
-
-Note: For many plants, you can calculate the avg size and apply the same scaling factor. You can use vibe coding to do this for now. We will do this later.
+if add `--no_no_scale`, the script will keep the original pcd scale instead of normalize to unit. 
+Since the point cloud from SfM or 2DGS usually has different scale from the real-world, we recommend to scale the input pcd to the real-world metric by yourself, like meters. 
 
 ## Step 1: using Cloud Compare or other 3D software to do segmentation
 
 Download cloudcompare from the [link](https://cloudcompare-org.danielgm.net/release/)
 
-(1) Drag `original_aligned.ply` to windows
+(1) Drag `pcd.ply` to windows
 
 <img src="tutorial_assets/1.png" width="600">
 
@@ -69,7 +66,7 @@ Download cloudcompare from the [link](https://cloudcompare-org.danielgm.net/rele
 在项目根目录运行：
 
 ```bash
-python script_manual_annotation/annotate_parent.py --data-root sample_point_cloud/val --meta-name 7
+python script_manual_annotation/annotate_parent.py --data-root sample_point_cloud/val --meta-name 3_i
 ```
 
 常用参数：
@@ -147,8 +144,14 @@ Q3: 标注窗口太小或太卡
 
 ## Step 3: run optimization to get Demeter Prameters
 
+`fit.py` will fit the leaf and stem with the segmentation point cloud seperately.
+
+`finetune.py`
+
 ```bash
 conda activate demeter
 
-python recon.py --data_folder sample_point_cloud/val/7 --species soybean
+python script_manual_annotation/fit.py --mesh_dir sample_point_cloud/val/3_i --species soybean
+python script_manual_annotation/2_deform_pca.py --mesh_dir sample_point_cloud/val/3_i --species soybean
+python script_manual_annotation/finetune.py --mesh_dir sample_point_cloud/val/3_i --species soybean
 ```
