@@ -4,13 +4,13 @@ note: this is a manual annotation method to create "ground-truth" Demeter pramet
 
 ## Step 0: align stem to X axis and normalized point cloud
 
-This script will normalize the data into mean offset and unit scale (95% points will within [−1,1]³), also align the main stem to X axis ([1, 0, 0]). And it requires manually click two points on the main stem to find the direction. First click should be **exactly** on the main stem bottom (yellow dot), second should be on another point near the top (blue dot), but no need to be exact. 
+This script will only align main stem to X axis ([1, 0, 0]) but **no scaling**. And it requires manually click two points on the main stem to find the direction. First click should be **exactly** on the main stem bottom (yellow dot), second should be on another point near the top (blue dot), but no need to be exact.
 
 ```bash
-python script_manual_annotation/normalize_data.py --point_path sample_point_cloud/val/27_o/pcd.ply --no_no_scale
+python script_manual_annotation/align_data.py --point_path sample_point_cloud/val/7/pcd.ply
 ```
-if add `--no_no_scale`, the script will keep the original pcd scale instead of normalize to unit. 
-Since the point cloud from SfM or 2DGS usually has different scale from the real-world, we recommend to scale the input pcd to the real-world metric by yourself, like meters. 
+
+Since the point cloud from SfM or 2DGS usually has different scale from the real-world, we recommend to scale the input pcd to the real-world metric (like meters) by yourself before running this. 
 
 ## Step 1: using Cloud Compare or other 3D software to do segmentation
 
@@ -66,12 +66,12 @@ Download cloudcompare from the [link](https://cloudcompare-org.danielgm.net/rele
 在项目根目录运行：
 
 ```bash
-python script_manual_annotation/annotate_parent.py --data-root sample_point_cloud/val --meta-name 3_i
+python script_manual_annotation/annotate_parent.py --data-root sample_point_cloud/val --meta-name 7a
 ```
 
 常用参数：
 
-- `--meta-name`: 样本名（默认 `7`）
+- `--meta-name`: 样本名
 - `--data-root`: 数据根目录（不传时按系统默认路径）
 - `--screen-width`: 可视化窗口宽（默认 `900`）
 - `--screen-height`: 可视化窗口高（默认 `900`）
@@ -146,12 +146,15 @@ Q3: 标注窗口太小或太卡
 
 `fit.py` will fit the leaf and stem with the segmentation point cloud seperately.
 
-`finetune.py`
+`finetune.py` will adjust the global error by fitting the whole point cloud.
 
 ```bash
 conda activate demeter
 
-python script_manual_annotation/fit.py --mesh_dir sample_point_cloud/val/3_i --species soybean
-python script_manual_annotation/2_deform_pca.py --mesh_dir sample_point_cloud/val/3_i --species soybean
-python script_manual_annotation/finetune.py --mesh_dir sample_point_cloud/val/3_i --species soybean
+python script_manual_annotation/fit.py --mesh_dir sample_point_cloud/val/7a --species soybean
+python script_manual_annotation/finetune.py --mesh_dir sample_point_cloud/val/7a --species soybean
 ```
+
+Finally, it will visualize the pcd with the demeter parametric mesh.
+
+<img src="tutorial_assets/14.png" width="200">

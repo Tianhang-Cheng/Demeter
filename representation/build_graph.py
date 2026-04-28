@@ -24,13 +24,19 @@ def make_axis(R, R_align, t, size=0.005):
     _axis_viz.translate(t)
     return _axis_viz
 
-def build_plant_graph(species:str, meta_name:str, parents:edict, classes:edict, curves:edict, surfaces:edict, fit_folder:str,
-                      pca_stem_3d, pca_leaf_3d, pca_leaf_2d,
-                      main_stem_end_points_bottom, connected_template_pcd, node_axis_along_parent_stem_all, n_iter:int=300, lr=5e-3, **kwargs):
+def build_plant_graph(
+        mesh_dir, species:str,
+        parents:edict, classes:edict, 
+        curves:edict, surfaces:edict,
+        pca_stem_3d, pca_leaf_3d, pca_leaf_2d,
+        main_stem_end_points_bottom, connected_template_pcd, 
+        node_axis_along_parent_stem_all, n_iter:int=300, lr=5e-3, **kwargs
+    ):
     """
     Build a plant graph from the given components, and fit to the original position from separate instance fits.
     """
 
+    fit_folder = os.path.join(mesh_dir, 'fit')
     retrain = kwargs.get('retrain', False)
     
     # empty template
@@ -268,9 +274,8 @@ def build_plant_graph(species:str, meta_name:str, parents:edict, classes:edict, 
     #     axis.translate([0, 0, 0])
     #     o3d.visualization.draw_geometries([axis] +  pcd_viz_stem + pcd_viz_leaf)
     
-    # ground-truth raw point cloud
-    full_plant_path = os.path.join(f'/home/tianhang/data/{species}/pcd_clean_join/{meta_name}.ply')
-    full_plant = o3d.io.read_point_cloud(full_plant_path)
+    # ground-truth raw point cloud 
+    full_plant = o3d.io.read_point_cloud(os.path.join(mesh_dir, 'original_aligned.ply'))
     full_plant.translate(-main_stem_end_points_bottom)
 
     instance_points_dict = edict()
@@ -289,30 +294,6 @@ def build_plant_graph(species:str, meta_name:str, parents:edict, classes:edict, 
         instance_points_array.append(points)
         points = torch.from_numpy(points).float().cuda()
 
-        # FIXME: do we need to read from raw folder for stem?
-        # if classes[str(int(_name))] == STEM_CLASS:
-        #     processed_file = os.path.join(raw_folder, os.path.basename(instance_fit))
-        #     pcd2 = o3d.io.read_point_cloud(processed_file)
-        #     pcd2.translate(-main_stem_end_points_bottom)
-        #     pcd2.colors = o3d.utility.Vector3dVector([])
-            
-        #     points2 = np.asarray(pcd2.points)
-        #     points2 = torch.from_numpy(points2).float().cuda()
-        #     points = torch.cat([points, points2], dim=0)
-        #     # points = points2
-
-        #     # downsample
-        #     # pcd2 = pcd2.voxel_down_sample(voxel_size=0.0025)
-        #     instance_points_viz.append(pcd2)
-            # o3d.visualization.draw_geometries([pcd, pcd2])
-        
-        # else:
-        #     pcd = o3d.io.read_point_cloud(instance_fit)
-        #     pcd.translate(-main_stem_end_points_bottom)
-        #     instance_points_viz.append(pcd)
-        #     points = np.asarray(pcd.points)
-        #     points = torch.from_numpy(points).float().cuda()
-        
         instance_points_dict[str(int(_name))] = points
         # instance_colors_dict[str(int(_name))] = np.asarray(pcd.colors)
     
@@ -320,31 +301,15 @@ def build_plant_graph(species:str, meta_name:str, parents:edict, classes:edict, 
                                         stem_3d_info_cp_local, stem_3d_info_thickness,   stem_3d_info_deform_coeff, stem_3d_info_s, stem_3d_info_M_quat, 
                                         leaf_3d_info_cp_local, leaf_3d_info_shape_coeff, leaf_3d_info_deform_coeff, leaf_3d_info_s, leaf_3d_info_M_quat, 
                                         node_length_along_parent_stem, species=species).to('cuda')
-
-    # with torch.no_grad():
-    #     p_init = plant_graph.generate(output_format='mesh', color='orange', align_global=True)
-    # axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.01)
-    # full_plant_rot = copy.deepcopy(full_plant).rotate(plant_graph.global_M_p.T, center=(0,0,0))
-    # o3d.visualization.draw_geometries([p_init, full_plant, axis], mesh_show_back_face=True)
-
-    model_path = kwargs.get('save_path', f'/home/tianhang/data/{species}/pcd_processed/{meta_name}/graph.pkl')
+    model_path = os.path.join(mesh_dir, 'graph.pkl')
 
     if os.path.exists(model_path) and not retrain:
         plant_graph.load(model_path)
         print('The plant graph is loaded from {}'.format(model_path))
-    
-    if retrain and not os.path.exists(model_path):
+    else:
         plant_graph.fit(instance_points_dict, n_iter=n_iter, lr=lr, mode='finetune')
         plant_graph.save(model_path)
         print('The plant graph is trained and saved to {}'.format(model_path))
-    elif retrain and os.path.exists(model_path):
-        plant_graph.fit(instance_points_dict, n_iter=n_iter, lr=lr/10, mode='finetune')
-        plant_graph.save(model_path)
-        print('The plant graph is retrained and saved to {}'.format(model_path))
-    
-    return_graph = kwargs.get('return_graph', False)
-    if return_graph:
-        return plant_graph
 
     # viz
     do_viz = kwargs.get('visualize', False)
@@ -352,22 +317,24 @@ def build_plant_graph(species:str, meta_name:str, parents:edict, classes:edict, 
         with torch.no_grad():
             p_final = plant_graph.generate(output_format='mesh', color='gray', align_global=True)
 
-        axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.01)
+        axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1)
 
         full_plant_rot = copy.deepcopy(full_plant).rotate(plant_graph.global_M, center=(0,0,0))
-        # o3d.visualization.draw_geometries([p_final, full_plant_rot, axis], mesh_show_back_face=True)
-        # o3d.visualization.draw_geometries([p_final,axis], mesh_show_back_face=True)
-        o3d.visualization.draw_geometries([p_final], mesh_show_back_face=True)
+        o3d.visualization.draw_geometries([p_final, full_plant_rot, axis], mesh_show_back_face=True)
+        # o3d.visualization.draw_geometries([p_final, axis], mesh_show_back_face=True)
+        # o3d.visualization.draw_geometries([p_final], mesh_show_back_face=True)
         # p_final.vertex_colors = o3d.utility.Vector3dVector(np.ones((len(p_final.vertices), 3))*0.7)
-
     
+    # save the fitted mesh separately
     do_save = kwargs.get('save', False)
     if do_save:
         with torch.no_grad():
             stem_mesh, leaf_mesh = plant_graph.generate(output_format='seg_mesh', color='gray', align_global=True)
-        leaf_save_path = os.path.join(f'/home/tianhang/data/{species}/fitted_mesh_viz', f'{meta_name}_leaf.ply')
-        stem_save_path = os.path.join(f'/home/tianhang/data/{species}/fitted_mesh_viz', f'{meta_name}_stem.ply')
+        leaf_save_path = os.path.join(mesh_dir, 'fitted_mesh_viz', f'leaf.ply')
+        stem_save_path = os.path.join(mesh_dir, 'fitted_mesh_viz', f'stem.ply')
         os.makedirs(os.path.dirname(leaf_save_path), exist_ok=True)
         o3d.io.write_triangle_mesh(leaf_save_path, leaf_mesh)
         o3d.io.write_triangle_mesh(stem_save_path, stem_mesh)
-        print('Done saving {} fitted mesh to {}'.format(meta_name, os.path.dirname(leaf_save_path)))
+        print('Done saving fitted mesh to {}'.format(os.path.dirname(leaf_save_path)))
+    
+    return plant_graph

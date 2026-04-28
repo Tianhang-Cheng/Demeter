@@ -100,13 +100,13 @@ def rotate_vector_to_target(P, target=[1, 0, 0]):
     
     return rotated, theta, rotation_axis, R
 
-def process_data(path: str, no_scale: bool = False):
+def process_data(path: str):
 
     """
     Process point cloud data.
 
-    If no_scale is True, centering and rotation are unchanged but coordinates are not divided
-    by the 95th-percentile radius (original physical scale is kept).
+    First click maps to the origin; the segment from first to second click maps onto the
+    positive x-axis (distance between clicks is preserved). No uniform scaling is applied.
     """
 
     print(f"Processing {path}")
@@ -122,13 +122,6 @@ def process_data(path: str, no_scale: bool = False):
     if len(colors_all) == 0:
         colors_all = np.ones_like(points_all) * 0.5 # gray
 
-    # center and scale
-    points_all_center = points_all - points_all.mean(axis=0)
-    radius = np.linalg.norm(points_all_center, axis=-1)
-    radius = np.sort(radius)
-    radius = radius[int(len(radius) * 0.95)] # find radius in 95% percentile
-    scale_divisor = 1.0 if no_scale else float(radius)
-
     geometries_points = points_all.astype(np.float32)
     geometries_colors = colors_all.astype(np.float32)
 
@@ -139,15 +132,19 @@ def process_data(path: str, no_scale: bool = False):
         pcd_temp = o3d.geometry.PointCloud()
         pcd_temp.points = o3d.utility.Vector3dVector(geometries_points)
         pcd_temp.colors = o3d.utility.Vector3dVector(geometries_colors)
-        blue_print("Please select two points to define the main axis (from bottom to top), use Ctrl + left click to select points. Then close the window.")
+        blue_print("Select two points (Ctrl+click): first -> origin, second -> +x axis; then close the window.")
         selected_indices, selected_coords = interactive(pcd_temp)
+        assert len(selected_coords) >= 2, "Select at least two points (first = origin, second = +x direction)."
 
+        click0 = selected_coords[0]
         vector = selected_coords[1] - selected_coords[0]
-        vector = vector / np.linalg.norm(vector)
+        vnorm = np.linalg.norm(vector)
+        assert vnorm > 1e-9, "The two clicks must be distinct."
+        vector = vector / vnorm
 
         R = rotate_vector_to_target(vector)[-1]
 
-        rotated_coords = (points_all - points_all.mean(axis=0)) @ R.T
+        rotated_coords = (points_all - click0) @ R.T
         pcd_new = o3d.geometry.PointCloud()
         pcd_new.points = o3d.utility.Vector3dVector(rotated_coords)
         pcd_new.colors = pcd_temp.colors
@@ -167,6 +164,13 @@ def process_data(path: str, no_scale: bool = False):
 
         selected_coords = np.loadtxt(os.path.join(os.path.dirname(point_path), 'rotation_click.txt')).astype(np.float32)
 
+    click0 = selected_coords[0]
+    pts_from_click = points_all - click0
+    dist = np.linalg.norm(pts_from_click, axis=-1)
+    dist_sorted = np.sort(dist)
+    radius = float(dist_sorted[int(len(dist_sorted) * 0.95)])
+    scale_divisor = 1.0
+
     # pcd = o3d.geometry.PointCloud()
     # pcd.points = o3d.utility.Vector3dVector(geometries_points @ rotation)
     # # pcd.colors = o3d.utility.Vector3dVector(np.repeat(geometries_semantic_gt[:, None]/2, 3, axis=-1).reshape(-1, 3))
@@ -174,15 +178,12 @@ def process_data(path: str, no_scale: bool = False):
     # axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=T, origin=[0, 0, 0])
     # o3d.visualization.draw_geometries([pcd, axis])
 
-    bbox_center = geometries_points.mean(axis=0)
-    geometries_points = (geometries_points - bbox_center)
-    # bbox_radius = np.linalg.norm(geometries_points, axis=-1).max()
-    # geometries_points = geometries_points / bbox_radius
+    geometries_points = (geometries_points - click0.astype(np.float32))
     geometries_points = geometries_points @ rotation
 
     transform_dict = {
         'rotation': rotation,
-        'bbox_center': bbox_center,
+        'bbox_center': click0.astype(np.float32),
         'radius': radius,
         'normalize_divisor': scale_divisor,
     }
@@ -215,8 +216,7 @@ def process_data(path: str, no_scale: bool = False):
     torch.save(data, os.path.join(os.path.dirname(point_path), 'normalized_pcd.pth'))
     print(f"Saved to {os.path.join(os.path.dirname(point_path), 'normalized_pcd.pth')}")
 
-    # save as ply
-    pcd_final.translate(-((selected_coords[0] - bbox_center) @ rotation / scale_divisor)) # slight translation for better visualization
+    # save as ply (first click already at origin; second on +x)
     o3d.io.write_point_cloud(os.path.join(os.path.dirname(point_path), 'original_aligned.ply'), pcd_final)
     # visualize pcd_final
     axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1, origin=[0, 0, 0])
@@ -227,22 +227,6 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--point_path', type=str, default=None, help='path to input point cloud')
-    parser.add_argument(
-        '--no-scale',
-        action='store_true',
-        help='keep original scale after centering and rotation (do not divide by 95%% radius)',
-    )
     args = parser.parse_args()
 
-    if args.point_path is not None:
-        process_data(args.point_path, no_scale=args.no_scale)
-        exit(0)
-
-    point_id = '2_i'
-    process_data(f'sample_point_cloud/val/{point_id}/pcd.ply', no_scale=False)
-
-    # point_id = '27_o'
-    # process_data(f'sample_point_cloud/val/{point_id}/pcd.ply')
-
-    # point_id = '10008da'
-    # process_data(f'sample_point_cloud/val/{point_id}/pcd.ply')
+    process_data(args.point_path)

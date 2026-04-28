@@ -61,8 +61,6 @@ def overfit(mesh_dir, species='soybean', PCD_MAX_NUM=30000, **kwargs):
 
     data_folder = f'sample_params/{species}'
     pca_leaf_2d = NodePCA(path=os.path.join(data_folder, '2d_leaf_pca.pth'))
-    pca_stem_3d = NodePCA(path=os.path.join(data_folder, '3d_stem_pca.pth'))
-    pca_leaf_3d = NodePCA(path=os.path.join(data_folder, '3d_leaf_pca.pth'))
 
     stem_pcd_paths = []
     leaf_pcd_paths = []
@@ -371,25 +369,12 @@ def overfit(mesh_dir, species='soybean', PCD_MAX_NUM=30000, **kwargs):
                     #     plt.show(block=True)
 
                     if parent == -1:
-
-                        root_path = pcd_path.replace(raw_folder, fit_folder).replace('.ply', '_root.txt')
-                        root_point = np.loadtxt(root_path)
-                        root_point = torch.tensor(root_point, dtype=torch.float, device='cuda')
-
-                        # visualize
-                        # fig = plt.figure()
-                        # ax = fig.add_subplot(111, projection='3d')
-                        # ax.scatter(pcd_points[:, 0].detach().cpu().numpy(), pcd_points[:, 1].detach().cpu().numpy(), pcd_points[:, 2].detach().cpu().numpy(), c='b', label='input pcd', alpha=0.5, s=1)
-                        # ax.scatter(p0_end[0].detach().cpu().numpy(), p0_end[1].detach().cpu().numpy(), p0_end[2].detach().cpu().numpy(), c='r', label='p0_end', s=100)
-                        # ax.scatter(p1_end[0].detach().cpu().numpy(), p1_end[1].detach().cpu().numpy(), p1_end[2].detach().cpu().numpy(), c='g', label='p1_end', s=100)
-                        # ax.scatter(root_point[0], root_point[1], root_point[2], c='black', label='root point', s=100)
-                        # # ax.scatter(full_plant_np_pcd[::10, 0], full_plant_np_pcd[::10, 1], full_plant_np_pcd[::10, 2], c='green', label='full plant', alpha=0.1, s=1)
-                        # plt.show(block=True)
-
+                        # root point is at the origin
+                        root_point = torch.tensor([0, 0, 0], dtype=torch.float, device='cuda')
                         if torch.norm(p0_end - root_point) < torch.norm(p1_end - root_point):
-                            p0_end, p1_end = root_point, p1_end
+                            p0_end, p1_end = p0_end, p1_end
                         else:
-                            p0_end, p1_end = p0_end, root_point
+                            p0_end, p1_end = p1_end, p0_end
             
             # save p0_end and p1_end
             np.savetxt(endpoint_txt, torch.stack([p0_end, p1_end]).detach().cpu().numpy())
@@ -599,7 +584,7 @@ if __name__ == '__main__':
 
     params = {
         'retrain': False,
-        'retrain_stem': False,
+        'retrain_stem': True,
         'retrain_leaf': False,
         'auto_connect': True,
         'visualize': True,
@@ -607,7 +592,7 @@ if __name__ == '__main__':
 
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--mesh_dir', type=str, default=None, help='path to the mesh directory')
+    parser.add_argument('--mesh_dir', type=str, default='sample_point_cloud/val/7a', help='path to the mesh directory')
     parser.add_argument('--species', type=str, default='soybean', help='plant species')
     parser.add_argument('--retrain', action='store_true', help='whether to retrain the model')
     parser.add_argument('--retrain_stem', action='store_true', help='whether to retrain the stem model')
@@ -621,14 +606,10 @@ if __name__ == '__main__':
     retrain_stem = args.retrain_stem
     retrain_leaf = args.retrain_leaf
 
-    if mesh_dir is not None:
-        new_params = {}
-        for k, v in params.items():
-            new_params[k] = getattr(args, k, v)
-        new_params['retrain'] = retrain
-        new_params['retrain_stem'] = retrain_stem
-        new_params['retrain_leaf'] = retrain_leaf
-        overfit(mesh_dir, species, **new_params)
-        exit(0)
-
-    overfit(mesh_dir='/home/tianhang/code/Demeter/sample_point_cloud/val/3_i', **params)  # leaf, stem done
+    new_params = {}
+    for k, v in params.items():
+        new_params[k] = getattr(args, k, v)
+    new_params['retrain'] = retrain
+    new_params['retrain_stem'] = True
+    new_params['retrain_leaf'] = retrain_leaf
+    overfit(mesh_dir, species, **new_params)

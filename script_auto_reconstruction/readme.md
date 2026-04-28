@@ -4,10 +4,10 @@ note: this is a optimization based method, which highly rely on the quality of t
 
 ## Step 1: align stem to X axis and normalized point cloud
 
-This script will normalize the data into mean offset and unit scale (95% points will within [−1,1]³), also align the main stem to X axis ([1, 0, 0]). And it requires manually click two points on the main stem to find the direction. First click should be **exactly** on the main stem bottom (yellow dot), second should be on another point near the top (blue dot), but no need to be exact. 
+This script will normalize the data into mean offset and unit scale (95% points will within [−1,1]³), also align the main stem to X axis ([1, 0, 0]). And it requires manually click two points on the main stem to find the direction. First click should be  on the main stem bottom (yellow dot), second should be on another point near the top (blue dot), but no need to be exact. 
 
 ```bash
-python script_manual_annotation/normalize_data.py --point_path sample_point_cloud/val/27_o/pcd.ply
+python script_auto_reconstruction/normalize_data.py --point_path sample_point_cloud/val/27_o/pcd.ply
 ```
 
 <img src="../assets/before_annotate.png" alt="Demeter " width="300">
