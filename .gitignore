@@ -9,4 +9,10 @@ third_party/2d-gaussian-splatting/install
 
 demeter.egg-info
 
-\build_dynamic
+/build_dynamic
+
+/sample_leaf_data
+
+*.DS_Store
+
+.vscode

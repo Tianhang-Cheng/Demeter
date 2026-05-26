@@ -66,6 +66,9 @@ python decode.py --data_folder sample_params --sample_name 02 --species rose
 
 ### b) Reconstruction parametric plant from point cloud
 
++ (Optional) Step 0: Fitting 2D leaf shape from images if you need other species
+[script_process_leaf_contour/readme.md](script_process_leaf_contour/readme.md)
+
 + Step 1: Get point cloud
 Monocular RGB video -> Raw 3D point clouds \
 [third_party/2d-gaussian-splatting/readme.md](third_party/2d-gaussian-splatting/readme.md)
@@ -87,18 +90,18 @@ Working in progress.
 
 Please refer to [Helios Tutorial](https://github.com/PlantSimulationLab/PyHelios/blob/master/docs/plugin_photosynthesis.md) for now.
 
-## 4. Release Plan
+## 4. Release Note
 
+- [ ] editing tutorial (TBD)
+- [ ] full soybean 2d image dataset (TBD)
+- [x] learning leaf shape PCA from 2D leaf scanns (2026-5-26)
+- [x] building demeter representation from your own annotated 3d point cloud (2026-4-24)
+- [x] full soybean 3d dataset (2025-12-17)
+- [x] sample data of other species (2025-11-1)
 - [x] sample data of soybean (2025-10-7)
 - [x] decoding (2025-10-7)
-- [ ] editing tutorial (TBD)
-- [x] sample data of other species (2025-11-1)
 - [x] reconstruction from 3d point cloud (2025-10-8)
-- [x] building demeter representation from your own annotated 3d point cloud (2026-4-24)
-- [ ] learning leaf shape PCA from 2D leaf scanns (TBD)
 - [x] L-system baseline (2025-10-13)
-- [x] full soybean 3d dataset (2025-12-17)
-- [ ] full soybean 2d image dataset (TBD)
 
 ## 5. Acknowledgement
 This project is supported by NSF Awards #1847334 #2331878, #2340254, #2312102, #2414227, and #2404385. We greatly appreciate the NCSA for providing computing resources.
