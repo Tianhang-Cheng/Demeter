@@ -11,8 +11,8 @@ demeter.egg-info
 
 /build_dynamic
 
-/sample_leaf_data
-
 *.DS_Store
 
 .vscode
+
+/sample_leaf_data/Folio
