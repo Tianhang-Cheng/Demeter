@@ -18,3 +18,10 @@ demeter.egg-info
 /script_process_leaf_contour/sam2/SAM_2.egg-info
 /script_process_leaf_contour/sam2/checkpoints/*.pt
 /sample_leaf_data/Folio
+
+
+/sample_leaf_data/soybean_rotated_mask/solution
+/sample_leaf_data/soybean_rotated_mask/solution_viz
+/sample_leaf_data/soybean_rotated_mask/skeleton_viz
+/sample_leaf_data/soybean_rotated_mask/skeleton_pca_viz
+/sample_leaf_data/soybean_rotated_mask/texture*
