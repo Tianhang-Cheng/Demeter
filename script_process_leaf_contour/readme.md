@@ -40,3 +40,20 @@ python 4_find_contour.py --data-dir ../sample_leaf_data/soybean
 python 5_solve_pde.py --data-dir ../sample_leaf_data/soybean
 python 6_pca_inner.py --data-dir ../sample_leaf_data/soybean
 ```
+
+for step 2, click 2 point on the leaf bottom and top respectively. press 'ESC' to continue to next image.
+
+![alt text](../assets/2d_annotate.png)
+
+after running step 4, there will be viz for the leaf edge
+
+![alt text](../assets/2d_leaf_contour.png)
+
+step 5 may take for a while to solve the equation
+
+## QA
+1. `ModuleNotFoundError: No module named 'utils'`
+
+remember to `pip install -e .` in root dir
+
+

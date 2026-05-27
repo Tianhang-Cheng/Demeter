@@ -1,6 +1,5 @@
 
 import argparse
-import sys
 from utils.pde import rasterize_polygon, relax_parallel, assign_boundary_value
 import numpy as np
 import os
@@ -11,7 +10,6 @@ import matplotlib.pyplot as plt
 import tqdm
 import scipy.ndimage as ndimage
 import time
-import imageio.v2 as iio
 from scipy.spatial import cKDTree
 
 def sample_left_contour_heights(n):
