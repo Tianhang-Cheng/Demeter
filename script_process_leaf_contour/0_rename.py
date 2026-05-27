@@ -1,32 +1,38 @@
-import imageio.v3 as iio
-import os
+import argparse
 import glob
+import os
+
+import imageio.v3 as iio
 import tqdm
 
-# species = 'papaya'
-# species = 'geranium'
-# species = 'betel'
-# species = 'thevetia'
-# species = 'ficus'
-species = 'soybean'
-# species = 'maize'
-# species = 'roses'
 
-folder = 'sample_leaf_data/{}'.format(species)  # Path to the folder containing images
+def parse_args():
+    parser = argparse.ArgumentParser(description='Rename leaf images to zero-padded indices.')
+    parser.add_argument(
+        '--data-dir',
+        required=True,
+        help='Folder containing .jpg leaf images.',
+    )
+    return parser.parse_args()
 
-files = glob.glob(os.path.join(folder, '*.jpg'))
-files.sort()
-for i, file in enumerate(tqdm.tqdm(files)):
-     
-     # continue if is digit in the filename
-     if os.path.basename(file).split('.')[0].isdigit():
-          continue
 
-     img = iio.imread(file)
+def main():
+    args = parse_args()
+    folder = os.path.abspath(args.data_dir)
 
-     os.rename(file, os.path.join(folder, f'{i:05d}.jpg'))
-     # os.rename(file.replace('.jpg', '_keypoints.txt'), os.path.join(folder, f'{i:03d}.txt'))
+    files = glob.glob(os.path.join(folder, '*.jpg'))
+    files.sort()
+    print(f'Total files: {len(files)}')
 
-     # map_dict[os.path.basename(file)] = f'{i:03d}.jpg'
+    for i, file in enumerate(tqdm.tqdm(files)):
+        if os.path.basename(file).split('.')[0].isdigit():
+            print(f'{file} is a already renamed, skipping')
+            continue
 
-     print(f'{file} -> {i:05d}.jpg')
+        iio.imread(file)
+        os.rename(file, os.path.join(folder, f'{i:05d}.jpg'))
+        print(f'{file} -> {i:05d}.jpg')
+
+
+if __name__ == '__main__':
+    main()

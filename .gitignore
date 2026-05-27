@@ -15,4 +15,6 @@ demeter.egg-info
 
 .vscode
 
+/script_process_leaf_contour/sam2/SAM_2.egg-info
+/script_process_leaf_contour/sam2/checkpoints/*.pt
 /sample_leaf_data/Folio

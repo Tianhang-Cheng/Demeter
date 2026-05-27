@@ -1,4 +1,7 @@
+import argparse
 import os
+import sys
+from pathlib import Path
 # if using Apple MPS, fall back to CPU for unsupported ops
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 import numpy as np
@@ -77,86 +80,83 @@ def show_masks(image, masks, scores, point_coords=None, box_coords=None, input_l
 
 
 
-parent_folder = '/home/tianhang/data/folio/Folio Leaf Dataset/Folio'
-# species = 'ashanti blood'
-# species = 'papaya'
-# species = 'geranium'
-# species = 'betel'
-# species = 'thevetia'
-# species = 'ficus'
-species = 'soybeans'
-# species = 'maize'
-image_foler = os.path.join(parent_folder, species)
-
-rot_folder = os.path.join(parent_folder, species+'_rotated')
-os.makedirs(rot_folder, exist_ok=True)
-mask_folder = os.path.join(parent_folder, species+'_mask')
-os.makedirs(mask_folder, exist_ok=True)
+SCRIPT_DIR = Path(__file__).resolve().parent
 
 
-from sam2.build_sam import build_sam2
-from sam2.sam2_image_predictor import SAM2ImagePredictor
-
-sam2_checkpoint = "../checkpoints/sam2.1_hiera_large.pt"
-model_cfg = "configs/sam2.1/sam2.1_hiera_l.yaml"
-
-sam2_model = build_sam2(model_cfg, sam2_checkpoint, device=device)
-
-predictor = SAM2ImagePredictor(sam2_model)
-
-image_list = os.listdir(image_foler)
-image_list.sort()
-image_list = [image_name for image_name in image_list if 'jpg' in image_name]
-
-import tqdm
-import imageio.v3 as iio
-import cv2
-for index, image_name in enumerate(tqdm.tqdm(image_list)):
-
-    image_path = os.path.join(image_foler, image_name)
-    image = Image.open(image_path).convert('RGB')
-    predictor.set_image(image)
-
-    h, w = image.size
-
-    input_point = np.array([[h//2, w//2],
-                            ])
-    input_label = np.array([1,])
-
-    masks, scores, logits = predictor.predict(
-        point_coords=input_point,
-        point_labels=input_label,
-        multimask_output=True,
+def parse_args():
+    parser = argparse.ArgumentParser(description='Generate leaf masks with SAM2.')
+    parser.add_argument('--data-dir', required=True, help='Folder containing .jpg leaf images.')
+    parser.add_argument(
+        '--sam-checkpoint',
+        default=str(SCRIPT_DIR / 'sam2/checkpoints/sam2.1_hiera_large.pt'),
+        help='Path to SAM2 checkpoint.',
     )
-
-    # input_box = np.array([0, 0, h, w])
-
-    # masks, scores, _ = predictor.predict(
-    #     point_coords=None,
-    #     point_labels=None,
-    #     box=input_box[None, :],
-    #     multimask_output=False,
-    # )
-
-    sorted_ind = np.argsort(scores)[::-1]
-    masks = masks[sorted_ind]
-    scores = scores[sorted_ind]
-    # logits = logits[sorted_ind]
-
-    # show_masks(image, masks, scores, point_coords=None, input_labels=None, borders=True)
-    # break
-
-    # fill holes
-    if masks[0][w//2, h//2] == 0:
-        target_mask = 255-masks[0].astype(np.uint8)*255
-    else:
-        target_mask = masks[0].astype(np.uint8)*255
-
-    pad = 10
-    target_mask[0:pad] = 0
-    target_mask[-pad:] = 0
-    target_mask[:, 0:pad] = 0
-    target_mask[:, -pad:] = 0
+    parser.add_argument(
+        '--sam-config',
+        default='configs/sam2.1/sam2.1_hiera_l.yaml',
+        help='SAM2 model config.',
+    )
+    return parser.parse_args()
 
 
-    iio.imwrite(os.path.join(mask_folder, image_name), target_mask)
+def main():
+    args = parse_args()
+    image_foler = os.path.abspath(args.data_dir)
+    mask_folder = image_foler + '_mask'
+    os.makedirs(mask_folder, exist_ok=True)
+
+    # Avoid shadowing the installed sam2 package by the local sam2/ repo folder.
+    script_dir = str(SCRIPT_DIR)
+    for path_entry in ('', script_dir):
+        while path_entry in sys.path:
+            sys.path.remove(path_entry)
+
+    from sam2.build_sam import build_sam2
+    from sam2.sam2_image_predictor import SAM2ImagePredictor
+
+    sam2_model = build_sam2(args.sam_config, args.sam_checkpoint, device=device)
+    predictor = SAM2ImagePredictor(sam2_model)
+
+    image_list = os.listdir(image_foler)
+    image_list.sort()
+    image_list = [image_name for image_name in image_list if 'jpg' in image_name]
+
+    import tqdm
+    import imageio.v3 as iio
+    import cv2
+    for index, image_name in enumerate(tqdm.tqdm(image_list)):
+        image_path = os.path.join(image_foler, image_name)
+        image = Image.open(image_path).convert('RGB')
+        predictor.set_image(image)
+
+        h, w = image.size
+
+        input_point = np.array([[h // 2, w // 2]])
+        input_label = np.array([1])
+
+        masks, scores, logits = predictor.predict(
+            point_coords=input_point,
+            point_labels=input_label,
+            multimask_output=True,
+        )
+
+        sorted_ind = np.argsort(scores)[::-1]
+        masks = masks[sorted_ind]
+        scores = scores[sorted_ind]
+
+        if masks[0][w // 2, h // 2] == 0:
+            target_mask = 255 - masks[0].astype(np.uint8) * 255
+        else:
+            target_mask = masks[0].astype(np.uint8) * 255
+
+        pad = 10
+        target_mask[0:pad] = 0
+        target_mask[-pad:] = 0
+        target_mask[:, 0:pad] = 0
+        target_mask[:, -pad:] = 0
+
+        iio.imwrite(os.path.join(mask_folder, image_name), target_mask)
+
+
+if __name__ == '__main__':
+    main()

@@ -1,3 +1,4 @@
+import argparse
 import os
 import matplotlib.pyplot as plt
 import tqdm
@@ -22,17 +23,13 @@ def bilinear_downsample(img: np.ndarray, new_h: int, new_w: int) -> np.ndarray:
     """
     return cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
 
-def train_2d_pca(species: str):
+def train_2d_pca(data_dir: str, bound_type: str = 'circle'):
 
-    bound_type = 'circle'
-
-    parent_folder = '/home/tianhang/data/folio/Folio Leaf Dataset/Folio'
-
-    # image_foler = os.path.join(parent_folder, species)
-    # keypoint_folder = os.path.join(parent_folder, species)
-    rot_folder = os.path.join(parent_folder, species+'_rotated')
+    image_foler = os.path.abspath(data_dir)
+    species = os.path.basename(os.path.normpath(image_foler))
+    rot_folder = image_foler + '_rotated'
     os.makedirs(rot_folder, exist_ok=True)
-    mask_folder = os.path.join(parent_folder, species+'_rotated_mask')
+    mask_folder = image_foler + '_rotated_mask'
     os.makedirs(mask_folder, exist_ok=True)
     # curve_folder = image_foler
 
@@ -44,7 +41,7 @@ def train_2d_pca(species: str):
     #     bad_sample = ['008', '012','016','017']
     #     image_list = [image_name for image_name in image_list if not any(bad in image_name for bad in bad_sample)]
  
-    folder = f'/home/tianhang/data/folio/Folio Leaf Dataset/Folio/{species}_rotated_mask/skeleton/{bound_type}'
+    folder = os.path.join(mask_folder, 'skeleton', bound_type)
     data_files = os.listdir(folder)
     
     # rotate_90 = np.array([[0, -1], [1, 0]])
@@ -80,7 +77,7 @@ def train_2d_pca(species: str):
     for i in tqdm.tqdm(range(len(pca.components))):
         print(f'Component {i}')
 
-        components_viz_dir = f'/home/tianhang/data/folio/Folio Leaf Dataset/Folio/{species}_rotated_mask/skeleton_pca_viz/{i}'
+        components_viz_dir = os.path.join(mask_folder, 'skeleton_pca_viz', str(i))
         os.makedirs(components_viz_dir, exist_ok=True)
 
         component_scores = data[:, i]
@@ -263,17 +260,18 @@ def train_2d_pca(species: str):
         _ = 1
     _ = 1
 
-if __name__ == '__main__':
-    
-    # species = 'ashanti blood'
-    # species = 'papaya'
-    # species = 'geranium'
-    # species = 'betel'
-    # species = 'thevetia'
-    # species = 'ficus'
-    # species = 'soybean' # done
-    # species = 'maize'
-    # species = 'papaya' # done
+def parse_args():
+    parser = argparse.ArgumentParser(description='Train 2D PCA on inner skeleton points.')
+    parser.add_argument('--data-dir', required=True, help='Folder containing .jpg leaf images.')
+    parser.add_argument(
+        '--bound-type',
+        default='circle',
+        choices=['square', 'circle'],
+        help='Skeleton bound type folder to read from.',
+    )
+    return parser.parse_args()
 
-    for species in ['geranium', 'soybean', 'papaya']:
-        train_2d_pca(species)
+
+if __name__ == '__main__':
+    args = parse_args()
+    train_2d_pca(data_dir=args.data_dir, bound_type=args.bound_type)

@@ -34,27 +34,32 @@ def rotate_image(image, mask, angle):
 
     return rotated_image, rotated_mask, M, new_w, new_h
 
+def parse_args():
+    parser = argparse.ArgumentParser(description='Rotate leaf images and masks to vertical.')
+    parser.add_argument('--data-dir', required=True, help='Folder containing .jpg leaf images.')
+    parser.add_argument(
+        '--mask-dir',
+        default=None,
+        help='Mask folder. Defaults to {data-dir}_mask.',
+    )
+    parser.add_argument(
+        '--keypoints-dir',
+        default=None,
+        help='Keypoint folder. Defaults to {data-dir}_keypoints.',
+    )
+    return parser.parse_args()
+
+
 if __name__ == '__main__':
-
-    # species = 'ashanti blood'
-    # species = 'papaya'
-    # species = 'geranium'
-    # species = 'betel'
-    # species = 'thevetia'
-    # species = 'ficus'
-    species = 'soybean'
-    # species = 'maize'
-
-    parent_folder = 'sample_leaf_data'
-    image_foler = os.path.join(parent_folder, species)
-    keypoint_folder = os.path.join(parent_folder, species)
-    rot_folder = os.path.join(parent_folder, species+'_rotated')
+    args = parse_args()
+    image_foler = os.path.abspath(args.data_dir)
+    mask_folder = args.mask_dir or image_foler + '_mask'
+    keypoint_folder = args.keypoints_dir or image_foler + '_keypoints'
+    rot_folder = image_foler + '_rotated'
     os.makedirs(rot_folder, exist_ok=True)
-    mask_folder = os.path.join(parent_folder, species+'_mask')
     os.makedirs(mask_folder, exist_ok=True)
-    rot_mask_folder = os.path.join(parent_folder, species+'_rotated_mask')
+    rot_mask_folder = image_foler + '_rotated_mask'
     os.makedirs(rot_mask_folder, exist_ok=True)
-    curve_folder = image_foler
 
     new_keypoint_folder = os.path.join(rot_mask_folder, 'keypoints')
     os.makedirs(new_keypoint_folder, exist_ok=True)
@@ -79,8 +84,8 @@ if __name__ == '__main__':
             # raise ValueError(f'Mask not found: {mask_path}, please use SAM2 to generate mask first')
             print(f'Mask not found: {mask_path}, skip this image')
             continue
-        keypoint_path = os.path.join(keypoint_folder, 'keypoints', image_name.replace('.jpg', '.txt'))
-        extra_keypoints_path = os.path.join(keypoint_folder,'keypoints', image_name.replace('.jpg', 'extra.txt'))
+        keypoint_path = os.path.join(keypoint_folder, image_name.replace('.jpg', '.txt'))
+        extra_keypoints_path = os.path.join(keypoint_folder, image_name.replace('.jpg', 'extra.txt'))
         image = cv2.imread(image_path)
         image_copy = image.copy()
         mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)

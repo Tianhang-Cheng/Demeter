@@ -1,3 +1,4 @@
+import argparse
 import os
 import cv2
 import matplotlib
@@ -205,14 +206,11 @@ def shrink_mask(mask: np.ndarray, k=3) -> np.ndarray:
     eroded = binary_erosion(mask.astype(bool), structure=structure)
     return eroded.astype(np.uint8)
 
-def find_contour(species):
-
-    parent_folder = '/home/tianhang/data/folio/Folio Leaf Dataset/Folio'
-
-    image_foler = os.path.join(parent_folder, species)
-    rot_folder = os.path.join(parent_folder, species+'_rotated')
+def find_contour(data_dir):
+    image_foler = os.path.abspath(data_dir)
+    rot_folder = image_foler + '_rotated'
     os.makedirs(rot_folder, exist_ok=True)
-    mask_folder = os.path.join(parent_folder, species+'_rotated_mask')
+    mask_folder = image_foler + '_rotated_mask'
     os.makedirs(mask_folder, exist_ok=True)
     curve_folder = image_foler
     keypoint_folder = os.path.join(mask_folder, 'keypoints')
@@ -382,15 +380,12 @@ def find_contour(species):
         # plt.show(block=False)
         plt.close()
 
+def parse_args():
+    parser = argparse.ArgumentParser(description='Find left/right leaf contours from rotated masks.')
+    parser.add_argument('--data-dir', required=True, help='Folder containing .jpg leaf images.')
+    return parser.parse_args()
+
+
 if __name__ == '__main__':
-
-    # species = 'ashanti blood'
-    # species = 'papaya'
-    # species = 'geranium'
-    # species = 'betel'
-    # species = 'thevetia'
-    species = 'ficus'
-    # species = 'soybean'
-    # species = 'maize'
-
-    find_contour(species)
+    args = parse_args()
+    find_contour(args.data_dir)

@@ -1,4 +1,5 @@
 
+import argparse
 import sys
 from utils.pde import rasterize_polygon, relax_parallel, assign_boundary_value
 import numpy as np
@@ -438,17 +439,16 @@ def add_texture_for_leaf(texture_on_template, l2t_solve_final, valid_mask):
 
     return leaf_retextured
 
-def solve_pde(species='papaya', bound_type='circle', resolution: int=512, retrain: bool = False):
+def solve_pde(data_dir, bound_type='circle', resolution: int=512, retrain: bool = False):
 
     Bounds = ['square', 'circle']
     assert bound_type in Bounds, f'Invalid bound type: {bound_type}, should be one of {Bounds}'
 
-    parent_folder = '/home/tianhang/data/folio/Folio Leaf Dataset/Folio'
-
-    image_foler = os.path.join(parent_folder, species)
-    rot_folder = os.path.join(parent_folder, species+'_rotated')
+    image_foler = os.path.abspath(data_dir)
+    species = os.path.basename(os.path.normpath(image_foler))
+    rot_folder = image_foler + '_rotated'
     os.makedirs(rot_folder, exist_ok=True)
-    mask_folder = os.path.join(parent_folder, species+'_rotated_mask')
+    mask_folder = image_foler + '_rotated_mask'
     os.makedirs(mask_folder, exist_ok=True)
     curve_folder = image_foler
     edge_folder = os.path.join(mask_folder, 'edge')
@@ -939,18 +939,25 @@ def solve_pde(species='papaya', bound_type='circle', resolution: int=512, retrai
 
         _=1
 
+def parse_args():
+    parser = argparse.ArgumentParser(description='Solve PDE for leaf UV parameterization.')
+    parser.add_argument('--data-dir', required=True, help='Folder containing .jpg leaf images.')
+    parser.add_argument(
+        '--bound-type',
+        default='square',
+        choices=['square', 'circle'],
+        help='Boundary shape for PDE.',
+    )
+    parser.add_argument('--resolution', type=int, default=1024, help='Solution grid resolution.')
+    parser.add_argument('--retrain', action='store_true', help='Recompute even if cached.')
+    return parser.parse_args()
+
+
 if __name__ == '__main__':
-
-    # species = 'papaya'
-    # species = 'soybean'
-    # species = 'geranium'
-    # species = 'maize'
-    species = 'ficus'
-
-    retrain = False
-
-    solve_pde(species=species, bound_type='square', resolution=1024)
-    
-    # for species in ['maize']:
-    #     # solve_pde(species=species, bound_type='circle', resolution=1024, retrain=retrain)
-    #     solve_pde(species=species, bound_type='square', resolution=1024, retrain=retrain)
+    args = parse_args()
+    solve_pde(
+        data_dir=args.data_dir,
+        bound_type=args.bound_type,
+        resolution=args.resolution,
+        retrain=args.retrain,
+    )

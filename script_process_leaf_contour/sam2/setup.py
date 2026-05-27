@@ -16,10 +16,6 @@ AUTHOR = "Meta AI"
 AUTHOR_EMAIL = "segment-anything@meta.com"
 LICENSE = "Apache 2.0"
 
-# Read the contents of README file
-with open("README.md", "r", encoding="utf-8") as f:
-    LONG_DESCRIPTION = f.read()
-
 # Required dependencies
 REQUIRED_PACKAGES = [
     "torch>=2.5.1",
@@ -158,8 +154,6 @@ setup(
     name=NAME,
     version=VERSION,
     description=DESCRIPTION,
-    long_description=LONG_DESCRIPTION,
-    long_description_content_type="text/markdown",
     url=URL,
     author=AUTHOR,
     author_email=AUTHOR_EMAIL,
