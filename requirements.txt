@@ -6,3 +6,4 @@ scikit-learn
 networkx
 graphviz
 numba
+rembg

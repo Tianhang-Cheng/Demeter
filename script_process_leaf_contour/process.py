@@ -11,7 +11,6 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 
 STEPS = [
     '0_rename.py',
-    '1_get_leaf_mask.py',
     '2_click_keypoints.py',
     '3_rotate_img_and_mask.py',
     '4_find_contour.py',
@@ -28,14 +27,24 @@ def parse_args():
         help='Image folder path.',
     )
     parser.add_argument(
+        '--gpu',
+        action='store_true',
+        help='Use SAM2 (GPU) for step 1 instead of rembg (CPU). More accurate but requires a CUDA GPU.',
+    )
+    parser.add_argument(
+        '--rembg-model',
+        default='u2net',
+        help='rembg model name when --cpu is set (default: u2net).',
+    )
+    parser.add_argument(
         '--sam-checkpoint',
         default=str(SCRIPT_DIR / 'sam2/checkpoints/sam2.1_hiera_large.pt'),
-        help='SAM2 checkpoint path (step 1).',
+        help='SAM2 checkpoint path (step 1, GPU mode).',
     )
     parser.add_argument(
         '--sam-config',
         default='configs/sam2.1/sam2.1_hiera_l.yaml',
-        help='SAM2 model config (step 1).',
+        help='SAM2 model config (step 1, GPU mode).',
     )
     parser.add_argument(
         '--bound-type',
@@ -69,14 +78,21 @@ def main():
 
     python = sys.executable
 
+    mask_script = '1_get_leaf_mask_cuda.py' if args.gpu else '1_get_leaf_mask_cpu.py'
+    steps = ['0_rename.py', mask_script] + STEPS
+
     step_cmds = [
         [python, '0_rename.py', '--data-dir', data_dir],
-        [
-            python, '1_get_leaf_mask.py',
-            '--data-dir', data_dir,
-            '--sam-checkpoint', args.sam_checkpoint,
-            '--sam-config', args.sam_config,
-        ],
+        (
+            [
+                python, '1_get_leaf_mask_cuda.py',
+                '--data-dir', data_dir,
+                '--sam-checkpoint', args.sam_checkpoint,
+                '--sam-config', args.sam_config,
+            ]
+            if args.gpu else
+            [python, '1_get_leaf_mask_cpu.py', '--data-dir', data_dir, '--model', args.rembg_model]
+        ),
         [python, '2_click_keypoints.py', '--data-dir', data_dir],
         [python, '3_rotate_img_and_mask.py', '--data-dir', data_dir],
         [python, '4_find_contour.py', '--data-dir', data_dir],
@@ -93,7 +109,7 @@ def main():
         ],
     ]
 
-    for script_name, cmd in zip(STEPS, step_cmds):
+    for script_name, cmd in zip(steps, step_cmds):
         run_step(script_name, cmd)
 
     print('\nPipeline finished.')
