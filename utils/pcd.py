@@ -7,6 +7,7 @@ import os
 import scipy
 from sklearn.cluster import DBSCAN
 from scipy.spatial import cKDTree
+from utils.device import get_device
 
 def visualize_frenet_frame(curve, axis, scale=1):
     """
@@ -129,9 +130,9 @@ def find_nearest(source, target, sample_num=1000, viz=False, return_dist=False):
     find the nearest point in source to target
     """
     if not isinstance(source, torch.Tensor):
-        source = torch.tensor(source).float().cuda()
+        source = torch.tensor(source).float().to(get_device())
     if not isinstance(target, torch.Tensor):
-        target = torch.tensor(target).float().cuda()
+        target = torch.tensor(target).float().to(get_device())
 
     _n = source.shape[0]
     if sample_num == -1:
@@ -737,9 +738,9 @@ def generate_right_hand_system(b):
     # rotation matrix around y
     # theta = np.random.rand() * 2 * np.pi
     theta = np.pi / 4 # FIXME: hard-coded
-    Ry = torch.tensor([[np.cos(theta), 0, np.sin(theta)], [0, 1, 0], [-np.sin(theta), 0, np.cos(theta)]], dtype=torch.float32).cuda()
-    
-    a = torch.tensor([0, 1, 0], dtype=torch.float32).cuda()
+    Ry = torch.tensor([[np.cos(theta), 0, np.sin(theta)], [0, 1, 0], [-np.sin(theta), 0, np.cos(theta)]], dtype=torch.float32).to(get_device())
+
+    a = torch.tensor([0, 1, 0], dtype=torch.float32).to(get_device())
 
     R = compute_rotation_matrices(a[None], b[None])[0].T # (3, 3)
 
@@ -795,7 +796,7 @@ def calculate_local_axes(p, mode, repeats=1, p0=None, p1=None):
         dp = p[1:] - p[:-1]
         dp = dp / (np.linalg.norm(dp, axis=1, keepdims=True) + 1e-9)
         
-        dp = torch.from_numpy(dp).float().cuda()
+        dp = torch.from_numpy(dp).float().to(get_device())
         local_axes = compute_rotation_matrices(dp[:-1], dp[1:]).detach().cpu().numpy() # (n-1, 3, 3)
         local_axes = np.transpose(local_axes, (0, 2, 1)) # (n-1, 3, 3)
         R0 = generate_right_hand_system(dp[0]).detach().cpu().numpy() # define the coordinate system, can be any right-hand system that rotates around dp[0] (y-axis)

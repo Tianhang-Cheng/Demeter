@@ -2,6 +2,7 @@ from sklearn.decomposition import PCA
 import torch
 import torch.nn as nn
 import numpy as np
+from utils.device import get_device
 
 class NodePCA(nn.Module):
     def __init__(self, n_components:int=1, path=None):
@@ -33,14 +34,14 @@ class NodePCA(nn.Module):
         # coeff_lower = coeff_mean - 3 * coeff_std
         # coeff_upper = coeff_mean + 3 * coeff_std
 
-        self.register_buffer('coeff_mean', torch.from_numpy(coeff_mean).float().cuda()) # [n_components]
-        self.register_buffer('coeff_std', torch.from_numpy(coeff_std).float().cuda()) # [n_components]
+        self.register_buffer('coeff_mean', torch.from_numpy(coeff_mean).float().to(get_device())) # [n_components]
+        self.register_buffer('coeff_std', torch.from_numpy(coeff_std).float().to(get_device())) # [n_components]
 
-        self.register_buffer('data_mean', torch.from_numpy(data_mean).float().cuda())
-        self.register_buffer('mean', torch.from_numpy(self.pca.mean_).float().cuda()) # [n_params]
-        self.register_buffer('components', torch.from_numpy(self.pca.components_).float().cuda()) # [n_components, n_params]
-        self.register_buffer('explained_variance', torch.from_numpy(self.pca.explained_variance_).float().cuda())
-        self.register_buffer('explained_variance_ratio', torch.from_numpy(self.pca.explained_variance_ratio_).float().cuda())
+        self.register_buffer('data_mean', torch.from_numpy(data_mean).float().to(get_device()))
+        self.register_buffer('mean', torch.from_numpy(self.pca.mean_).float().to(get_device())) # [n_params]
+        self.register_buffer('components', torch.from_numpy(self.pca.components_).float().to(get_device())) # [n_components, n_params]
+        self.register_buffer('explained_variance', torch.from_numpy(self.pca.explained_variance_).float().to(get_device()))
+        self.register_buffer('explained_variance_ratio', torch.from_numpy(self.pca.explained_variance_ratio_).float().to(get_device()))
 
         print('Number of components:', self.pca.n_components_)
         print('Explained variance ratio:', self.pca.explained_variance_ratio_)
@@ -86,7 +87,7 @@ class NodePCA(nn.Module):
         # data = self.pca.inverse_transform(data)
         back_to_numpy = False
         if not isinstance(data, torch.Tensor):
-            data = torch.from_numpy(data).float().cuda()
+            data = torch.from_numpy(data).float().to(get_device())
             back_to_numpy = True
         
         data = data @ self.components

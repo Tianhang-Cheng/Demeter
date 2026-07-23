@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from easydict import EasyDict as edict
 from utils.pca import NodePCA
 from utils.constant import *
+from utils.device import get_device
 from utils.rotation_pytorch3d import quaternion_to_matrix, matrix_to_quaternion, standardize_quaternion
 from utils.pcd import grid_to_mesh, get_min_dist, compute_frenet_serret_frame
 from utils.plot import generate_cylinder_along_curve_batch, draw_tree_with_colors
@@ -257,7 +258,7 @@ class PlantGraphFixedTopology(nn.Module):
         geometries_offset_dict = {}
 
         geometries_dict_stem = {}
-        offset_losses = torch.tensor(0.0).float().cuda()
+        offset_losses = torch.tensor(0.0).float().to(get_device())
 
         # sort layers by layer index
         layers = {k: layers[k] for k in sorted(layers.keys())}
@@ -300,13 +301,13 @@ class PlantGraphFixedTopology(nn.Module):
                         s = leaf_mean_scale
                 
                 if is_current_processed:
-                    M = torch.eye(3).float().cuda()
+                    M = torch.eye(3).float().to(get_device())
 
                 if child_k != main_stem:
                     l = self.__getattr__(f'length_{child_k}')
                     l = torch.clip(l, 0.0, 1.0)
                     if is_current_processed:
-                        l = torch.tensor(0.0).float().cuda()
+                        l = torch.tensor(0.0).float().to(get_device())
 
                     _pp = pcd_stem[xp]
                     _la = axis_on_parent[xp]
@@ -319,8 +320,8 @@ class PlantGraphFixedTopology(nn.Module):
                     M_p = quaternion_to_matrix(slerp_quaternion(_la_lower, _la_upper, local_t))
                 
                 else:
-                    M_p = torch.eye(3).float().cuda()
-                    offset = torch.tensor([0, 0, 0]).float().cuda()
+                    M_p = torch.eye(3).float().to(get_device())
+                    offset = torch.tensor([0, 0, 0]).float().to(get_device())
                 
                 geometries_offset_dict[child_k] = offset
 
@@ -329,7 +330,7 @@ class PlantGraphFixedTopology(nn.Module):
                     if child_k == main_stem:
                         self.global_M = _detach(M).copy()
                     if kwargs.get('align_global', False) and child_k == main_stem:
-                        M = torch.eye(3).float().cuda() # override M, aligned in world space
+                        M = torch.eye(3).float().to(get_device()) # override M, aligned in world space
 
                     # if not self.skip_stem_pca_encoding:
                     #     cp_w_local = self.pca_stem.decode(cp_w_local).reshape(-1, 3)
@@ -339,7 +340,7 @@ class PlantGraphFixedTopology(nn.Module):
                     #     cp_w_local = cp_w_local.reshape(-1, 3)
                         
                     if 'uniform_thickness' in kwargs:
-                        thickness = torch.tensor(kwargs['uniform_thickness']).float().cuda()
+                        thickness = torch.tensor(kwargs['uniform_thickness']).float().to(get_device())
                     else:
                         thickness = self.__getattr__(f'thickness_{child_k}')
                     
@@ -543,8 +544,8 @@ class PlantGraphFixedTopology(nn.Module):
             elif mode == 'finetune':
                 pcd_stem, pcd_leaf, offset_losses = p
                 
-                stem_fit_loss = torch.tensor(0.0).float().cuda()
-                leaf_fit_loss = torch.tensor(0.0).float().cuda()
+                stem_fit_loss = torch.tensor(0.0).float().to(get_device())
+                leaf_fit_loss = torch.tensor(0.0).float().to(get_device())
 
                 n_leaf = len(pcd_leaf)
                 for k in pcd_leaf:

@@ -3,10 +3,11 @@ import numpy as np
 import open3d as o3d
 import torch
 from utils.constant import *
+from utils.device import set_device, get_device
 from representation.graph import PlantGraphFixedTopology
 from utils.pca import NodePCA
 from utils.graph import load_parent, load_class
-    
+
 def decode_params(data_folder:str, sample_name:str, species:str='soybean', **kwargs):
 
     instance_folder = os.path.join(data_folder, species, 'instances', sample_name)
@@ -21,14 +22,14 @@ def decode_params(data_folder:str, sample_name:str, species:str='soybean', **kwa
     pca_stem_3d = NodePCA(path=os.path.join(data_folder, species, '3d_stem_pca.pth'))
     pca_leaf_3d = NodePCA(path=os.path.join(data_folder, species, '3d_leaf_pca.pth'))
     pca_leaf_2d = NodePCA(path=os.path.join(data_folder, species, '2d_leaf_pca.pth'))
-    
+
     # init plant graph
     plant_graph = PlantGraphFixedTopology(
         classes=classes, parents=parents, species=species,
         pca_leaf_3d=pca_leaf_3d, pca_stem_3d=pca_stem_3d, pca_leaf_2d=pca_leaf_2d
     )
     plant_graph.load(os.path.join(instance_folder, 'graph.pkl'))
-    plant_graph.cuda()
+    plant_graph.to(get_device())
 
     # draw graph structure
     if kwargs.get('draw_graph', False):
@@ -52,7 +53,12 @@ if __name__ == "__main__":
     parser.add_argument('--sample_name', type=str, default=None, help='name of the sample to process')
     parser.add_argument('--species', type=str, default='soybean', help='species of the plant')
     parser.add_argument('--draw_graph', action='store_true', help='whether to draw the graph structure')
+    parser.add_argument('--device', type=str, default='auto', choices=['auto', 'cpu', 'cuda'], help='device to use (auto, cpu, or cuda)')
     args = parser.parse_args()
+
+    # Set device before any model loading
+    set_device(args.device)
+    print(f'Using device: {get_device()}')
 
     data_folder = args.data_folder
     sample_name = args.sample_name
@@ -61,7 +67,7 @@ if __name__ == "__main__":
     if sample_name is not None:
         decode_params(data_folder, sample_name, species)
         exit(0)
-    
+
     # example usage 2
     data_folder = 'sample_params'
     decode_params(data_folder, '24_o', 'soybean') # '3_o', '3_i', '4_o', '4_i', '6_o',  '8_i', '24_o', '101_o' etc.

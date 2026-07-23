@@ -1,6 +1,6 @@
 # Demeter: A Parametric Model of Crop Plant Morphology from the Real World (ICCV 2025)
 
-[Project Page](https://tianhang-cheng.github.io/Demeter/) | [Mesh Dataset](https://drive.google.com/file/d/1OLa7JXfgj3QGRKKB0nxhRyndsH_peiaY/view?usp=sharing)
+[Project Page](https://tianhang-cheng.github.io/Demeter/) | [Mesh Dataset](https://huggingface.co/datasets/TianhangCheng7/DemeterSoybeanRawMesh)
 
 <img src="assets/teaser.png" alt="Demeter " width="600">
 
@@ -14,7 +14,7 @@ The processed 3d parametric plant samples are already included in the code.
 
 ### Raw data
 
-The raw soybean mesh data can be found in this [google drive link](https://drive.google.com/file/d/1OLa7JXfgj3QGRKKB0nxhRyndsH_peiaY/view?usp=sharing). It contains 607 unprocessed meshes, which can be used for 3D generation/representation learning. The main stem are aligned to y-axis and the bottom tip lies in (0,0,0). We will release the correspondent 2D images soon.
+The raw soybean mesh data can be found on [Hugging Face](https://huggingface.co/datasets/TianhangCheng7/DemeterSoybeanRawMesh). It contains 607 unprocessed meshes, which can be used for 3D generation/representation learning. The main stem are aligned to y-axis and the bottom tip lies in (0,0,0). We will release the correspondent 2D images soon.
 
 <img src="assets/dataset_row.png" alt="Demeter " width="600">
 

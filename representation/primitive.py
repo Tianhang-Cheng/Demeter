@@ -11,11 +11,15 @@ from utils.rotation_custom import cartesian_to_spherical, spherical_to_cartesian
 from utils.color_print import *
 from utils.tool import polygon_area_torch
 from utils.graph import max_geodesic_distance
+from utils.device import get_device
 import math
 
-ZERO0 = torch.zeros((1, 3), device='cuda')
-ZERO = torch.zeros((20, 1, 3), device='cuda')
-ZERO1 = torch.zeros((21, 1, 3), device='cuda')
+def _get_ZERO0():
+    return torch.zeros((1, 3), device=get_device())
+
+def _get_ZERO1():
+    return torch.zeros((21, 1, 3), device=get_device())
+
 pi = np.pi
 
 def laplacian_smoothness_weighted(pts):
@@ -147,14 +151,14 @@ def compute_t_values(control_points, alpha):
     
     # Prepend a 0 for t0 and use cumulative sum to get t1, t2, ..., tn
     # t = np.concatenate([[0], np.cumsum(distances)])
-    t = torch.cat([torch.zeros([1,*distances.shape[1:]], dtype=distances.dtype, device='cuda'), torch.cumsum(distances, dim=0)], dim=0)
+    t = torch.cat([torch.zeros([1,*distances.shape[1:]], dtype=distances.dtype, device=get_device()), torch.cumsum(distances, dim=0)], dim=0)
     return t
 
 def catmull_rom_spline(P0, P1, P2, P3, t0, t1, t2, t3, num_points=100):
     """Computes points on a Catmull-Rom spline with non-uniform parameterization."""
     def basis_function(t, t0, t1, t2, t3, P0, P1, P2, P3):
         if len(P0.shape) == 2:
-            t_ = torch.linspace(0, 1, num_points).cuda()[:, None]
+            t_ = torch.linspace(0, 1, num_points).to(get_device())[:, None]
             t = (t1[None] + (t2 - t1)[None] * t_)[..., None] # [num_points, batch, 1]
             P0 = P0[None]
             P1 = P1[None]
@@ -165,7 +169,7 @@ def catmull_rom_spline(P0, P1, P2, P3, t0, t1, t2, t3, num_points=100):
             t2 = t2[None, :, None]
             t3 = t3[None, :, None]
         else:
-            t = torch.linspace(0, 1, num_points)[:, None].cuda() # [num_points, 1]
+            t = torch.linspace(0, 1, num_points)[:, None].to(get_device()) # [num_points, 1]
             t = t1 + (t2 - t1) * t
 
         A1 = (t1 - t) / (t1 - t0) * P0 + (t - t0) / (t1 - t0) * P1
@@ -288,22 +292,22 @@ class CatmullRomCurve():
         self.res = 24
         assert self.res > 2
 
-        self.s = nn.Parameter(torch.tensor(1.0, dtype=torch.float, device='cuda'), requires_grad=False) # scale, articulation
-        self.l = nn.Parameter(torch.tensor(1.0/(self.res-1), dtype=torch.float, device='cuda'), requires_grad=True) # length, shape parameter
-        self.main_rotation = nn.Parameter(torch.zeros([self.res - 1, 2], device='cuda') , requires_grad=True) # deformation
-        self.quat = nn.Parameter(torch.tensor([1.0, 0.0, 0.0, 0.0], dtype=torch.float, device='cuda'), requires_grad=True) # rot, articulation
+        self.s = nn.Parameter(torch.tensor(1.0, dtype=torch.float, device=get_device()), requires_grad=False) # scale, articulation
+        self.l = nn.Parameter(torch.tensor(1.0/(self.res-1), dtype=torch.float, device=get_device()), requires_grad=True) # length, shape parameter
+        self.main_rotation = nn.Parameter(torch.zeros([self.res - 1, 2], device=get_device()) , requires_grad=True) # deformation
+        self.quat = nn.Parameter(torch.tensor([1.0, 0.0, 0.0, 0.0], dtype=torch.float, device=get_device()), requires_grad=True) # rot, articulation
 
-        self.p0_end = nn.Parameter(torch.tensor([0.0, 0.0, 0.0], dtype=torch.float, device='cuda'), requires_grad=False)
-        self.p1_end = nn.Parameter(torch.tensor([0.0, 0.0, 1.0], dtype=torch.float, device='cuda'), requires_grad=False)
-        # self.p0_end_opt = nn.Parameter(torch.tensor([0.0, 0.0, 0.0], dtype=torch.float, device='cuda'), requires_grad=True)
+        self.p0_end = nn.Parameter(torch.tensor([0.0, 0.0, 0.0], dtype=torch.float, device=get_device()), requires_grad=False)
+        self.p1_end = nn.Parameter(torch.tensor([0.0, 0.0, 1.0], dtype=torch.float, device=get_device()), requires_grad=False)
+        # self.p0_end_opt = nn.Parameter(torch.tensor([0.0, 0.0, 0.0], dtype=torch.float, device=get_device()), requires_grad=True)
 
         if p0_end is not None:
             if not isinstance(p0_end, torch.Tensor):
-                p0_end = torch.tensor(p0_end, dtype=torch.float, device='cuda')
+                p0_end = torch.tensor(p0_end, dtype=torch.float, device=get_device())
             self.p0_end.data = p0_end.clone().detach()
         if p1_end is not None:
             if not isinstance(p1_end, torch.Tensor):
-                p1_end = torch.tensor(p1_end, dtype=torch.float, device='cuda')
+                p1_end = torch.tensor(p1_end, dtype=torch.float, device=get_device())
             self.p1_end.data = p1_end.clone().detach()
         self.find_end = True
         if p0_end is not None and p1_end is not None:
@@ -321,7 +325,7 @@ class CatmullRomCurve():
         self.fitted = True
 
         if not isinstance(p, torch.Tensor):
-            p = torch.tensor(p, dtype=torch.float, device='cuda')
+            p = torch.tensor(p, dtype=torch.float, device=get_device())
         
         self.fit_R(p, iters=iters1, input_scale=input_scale)
         self.fit_all(p, iters=iters2)
@@ -392,7 +396,7 @@ class CatmullRomCurve():
         if l_straight.item() < 0.01:
             self.force_straight = True
 
-        thickness = nn.Parameter(torch.tensor(0.0, dtype=torch.float, device='cuda'), requires_grad=True)
+        thickness = nn.Parameter(torch.tensor(0.0, dtype=torch.float, device=get_device()), requires_grad=True)
 
         lr = 2e-3
 
@@ -435,7 +439,7 @@ class CatmullRomCurve():
             # keypoint_loss = torch.mean(torch.square(((self.p0_end_opt - self.p0_end) @ rot.T) * s - cp[0])) + torch.mean(torch.square(((self.p1_end - self.p0_end) @ rot.T) * s - cp[-1]))
             keypoint_loss = torch.mean(torch.square(((self.p1_end - self.p0_end) @ rot.T) * s - cp[-1])) * 0.5
             # end_loss = torch.mean(torch.square(cp[-1, 0]) + torch.square(cp[0, 0])) * 5e2 * MUL # control points should lie in z axis
-            end_loss = torch.mean(torch.square(cp[-1]-torch.tensor([0,0,1]).float().cuda())) * 5 # control points should close to (0, 0, 1)
+            end_loss = torch.mean(torch.square(cp[-1]-torch.tensor([0,0,1]).float().to(get_device()))) * 5 # control points should close to (0, 0, 1)
 
             # fit_loss = (torch.mean((dist1).square()) + torch.mean((dist2).square())) 
 
@@ -456,10 +460,10 @@ class CatmullRomCurve():
                 smooth_loss = curve_smoothness_loss(cp) * 2e-3
             else:
                 smooth_loss = curve_smoothness_loss(cp) * 2e-4
-            # smooth_loss = torch.tensor(0.0, device='cuda')
+            # smooth_loss = torch.tensor(0.0, device=get_device())
 
             # var_loss = torch.square((dist1 - torch.mean(dist1))).mean() + torch.square((dist2 - torch.mean(dist2))).mean() * 0.5
-            # var_loss = torch.tensor(0.0, device='cuda')
+            # var_loss = torch.tensor(0.0, device=get_device())
             # total_loss = fit_loss + end_loss + var_loss + keypoint_loss
             # keypoint_loss *= 100
             # end_loss *= 100
@@ -497,7 +501,7 @@ class CatmullRomCurve():
         #     print(x.mean(0))
 
         self.main_rotation.data[:, 1] += theta
-        self.quat.data = matrix_to_quaternion(torch.tensor(R, dtype=torch.float, device='cuda') @ rot)
+        self.quat.data = matrix_to_quaternion(torch.tensor(R, dtype=torch.float, device=get_device()) @ rot)
         self.thickness = thickness.detach() / s
 
     def save(self, path):
@@ -531,7 +535,7 @@ class CatmullRomCurve():
                 rotation = self.main_rotation * w # (n-1, 2)
             else:
                 if not isinstance(rotation, torch.Tensor):
-                    rotation = torch.tensor(rotation, dtype=torch.float, device='cuda')
+                    rotation = torch.tensor(rotation, dtype=torch.float, device=get_device())
                 rotation = rotation.mean(0) + (rotation - rotation.mean(0)) * w
             
             if l is None:
@@ -539,12 +543,12 @@ class CatmullRomCurve():
             
             line_m_deform = spherical_to_cartesian(rotation, r=l) # (n-1, 3), make sure the total length is 1
             curved_cp = torch.cumsum(line_m_deform, dim=0) # (n-2, 3)
-            curved_cp = torch.cat([ZERO0, curved_cp], dim=0)  # (n-1, 3)
+            curved_cp = torch.cat([_get_ZERO0(), curved_cp], dim=0)  # (n-1, 3)
         
         else:
 
             if not isinstance(cp, torch.Tensor):
-                cp = torch.tensor(cp, dtype=torch.float, device='cuda')
+                cp = torch.tensor(cp, dtype=torch.float, device=get_device())
 
             curved_cp = cp
 
@@ -581,27 +585,27 @@ class CatmullRomSurface():
             sx_init = 1.0
             if species == 'maize':
                 sx_init = 0.5
-            self.sx = nn.Parameter(torch.tensor([sx_init], dtype=torch.float, device='cuda'), requires_grad=True)
+            self.sx = nn.Parameter(torch.tensor([sx_init], dtype=torch.float, device=get_device()), requires_grad=True)
         else:
-            self.sx = torch.tensor([1.0], dtype=torch.float, device='cuda')
+            self.sx = torch.tensor([1.0], dtype=torch.float, device=get_device())
 
-        self.mean = self.pca.data_mean.clone().detach().cuda()
-        self.components = self.pca.components.clone().detach().cuda()
-        self.dw = nn.Parameter(torch.zeros(len(self.pca.components), 1, device='cuda'), requires_grad=True)
-        self.quat = nn.Parameter(torch.tensor([1.0, 0.0, 0.0, 0.0], dtype=torch.float, device='cuda'), requires_grad=True)
-        self.s = nn.Parameter(torch.tensor(1.0, dtype=torch.float, device='cuda'), requires_grad=True)
+        self.mean = self.pca.data_mean.clone().detach().to(get_device())
+        self.components = self.pca.components.clone().detach().to(get_device())
+        self.dw = nn.Parameter(torch.zeros(len(self.pca.components), 1, device=get_device()), requires_grad=True)
+        self.quat = nn.Parameter(torch.tensor([1.0, 0.0, 0.0, 0.0], dtype=torch.float, device=get_device()), requires_grad=True)
+        self.s = nn.Parameter(torch.tensor(1.0, dtype=torch.float, device=get_device()), requires_grad=True)
 
-        self._theta_bias = torch.tensor([np.pi/2, 0], device='cuda', dtype=torch.float) # 45，43
-        self.main_rotation = nn.Parameter(torch.zeros([44, 2], device='cuda') , requires_grad=True) # [0, 1] cartesian
-        self.sub_rotation_left = nn.Parameter(torch.zeros([20, 43, 2], device='cuda') , requires_grad=True) # [0, 1]
-        self.sub_rotation_right = nn.Parameter(torch.zeros([20, 43, 2], device='cuda') , requires_grad=True) # [0, 1]
+        self._theta_bias = torch.tensor([np.pi/2, 0], device=get_device(), dtype=torch.float) # 45，43
+        self.main_rotation = nn.Parameter(torch.zeros([44, 2], device=get_device()) , requires_grad=True) # [0, 1] cartesian
+        self.sub_rotation_left = nn.Parameter(torch.zeros([20, 43, 2], device=get_device()) , requires_grad=True) # [0, 1]
+        self.sub_rotation_right = nn.Parameter(torch.zeros([20, 43, 2], device=get_device()) , requires_grad=True) # [0, 1]
 
         self.main_rotation.data[..., 0] = np.pi / 2
         self.sub_rotation_left.data[..., 0] = np.pi / 2
         self.sub_rotation_right.data[..., 0] = np.pi / 2
 
         sigma = np.loadtxt(f'sample_params/{species}/2d_leaf_pca_sigma.txt') 
-        self.shape_sigma = torch.tensor(sigma, dtype=torch.float, device='cuda')[:, None]
+        self.shape_sigma = torch.tensor(sigma, dtype=torch.float, device=get_device())[:, None]
 
         self.fitted = False
 
@@ -636,7 +640,7 @@ class CatmullRomSurface():
             feat = self.mean + (torch.clamp(dw, -5, 5) * self.shape_sigma * self.components).sum(dim=0)
 
         feat_reshape = feat.reshape(45, 43, 2)
-        scale = torch.concatenate([self.sx, torch.tensor([1.0]).float().cuda()], dim=0) # (2,)
+        scale = torch.concatenate([self.sx, torch.tensor([1.0]).float().to(get_device())], dim=0) # (2,)
         scale = torch.clamp(scale, min=0.05, max=10.0)
         feat_reshape = feat_reshape * scale[None, None, :] # (45, 43, 2)
         feat = feat_reshape.reshape(-1, 2) # (45*43, 2)
@@ -648,7 +652,7 @@ class CatmullRomSurface():
             main_rotation = self.main_rotation
         
         feat_reshape = feat.reshape(45, 43, 2)
-        feat_reshape = torch.cat([feat_reshape, torch.zeros((45, 43, 1), device='cuda')], dim=-1) # make it 3d
+        feat_reshape = torch.cat([feat_reshape, torch.zeros((45, 43, 1), device=get_device())], dim=-1) # make it 3d
         feat_reshape = feat_reshape.transpose(1, 0) # (43, 45, 3)
 
         # fig = plt.figure()
@@ -663,11 +667,11 @@ class CatmullRomSurface():
         line_m_deform = spherical_to_cartesian(a + constrain_theta_range((main_rotation - self._theta_bias) * w, low=-pi/2, high=pi/2), r=r)
         # elif not isinstance(main_rotation, torch.Tensor):
         #     assert w == 1
-        #     main_rotation = torch.tensor(main_rotation, dtype=torch.float, device='cuda')
+        #     main_rotation = torch.tensor(main_rotation, dtype=torch.float, device=get_device())
         #     line_m_deform = spherical_to_cartesian(main_rotation, r=r)
         
         abs_p_m = torch.cumsum(line_m_deform, dim=0)
-        abs_p_m = torch.cat([torch.zeros((1, 3), device='cuda'), abs_p_m], dim=0)
+        abs_p_m = torch.cat([torch.zeros((1, 3), device=get_device()), abs_p_m], dim=0)
 
         if sub_rotation_l is None:
             sub_rotation_l = self.sub_rotation_left
@@ -708,7 +712,7 @@ class CatmullRomSurface():
         # abs_p_l_deform = rel_p_l_deform + abs_p_m # (n, num_points, 3)
 
         rel_p_l_deform = torch.cumsum(torch.cat([rel_p_l[0:1], line_l_deform]), dim=0) # (21, 43, 3)
-        rel_p_l_deform = torch.cat([ZERO1, rel_p_l_deform, ZERO1], dim=1) # (21, 45, 3)
+        rel_p_l_deform = torch.cat([_get_ZERO1(), rel_p_l_deform, _get_ZERO1()], dim=1) # (21, 45, 3)
         abs_p_l_deform = rel_p_l_deform + abs_p_m[None] # (21, 45, 3)
 
         # fig = plt.figure()
@@ -717,7 +721,7 @@ class CatmullRomSurface():
         # plt.show()
 
         rel_p_r_deform = torch.cumsum(torch.cat([rel_p_r[0:1], line_r_deform]), dim=0)
-        rel_p_r_deform = torch.cat([ZERO1, rel_p_r_deform, ZERO1], dim=1)
+        rel_p_r_deform = torch.cat([_get_ZERO1(), rel_p_r_deform, _get_ZERO1()], dim=1)
         abs_p_r_deform = rel_p_r_deform + abs_p_m[None] # (n, num_points, 3)
 
         # combine all points
@@ -741,7 +745,7 @@ class CatmullRomSurface():
             p_deform_sr_0 = p_deform_sr[0, 0]
             p_deform_sr_1 = p_deform_sr[0, -1]
             p_deform_sr = compute_catmull_rom_curve_slow(wrap_control_points(p_deform_sr[:, 1:-1]), num_points=(super_resolution_rate+1))
-            _zero = torch.zeros([p_deform_sr.shape[0], 1, 3], device='cuda', dtype=torch.float)
+            _zero = torch.zeros([p_deform_sr.shape[0], 1, 3], device=get_device(), dtype=torch.float)
             p_deform_sr = torch.cat([_zero + p_deform_sr_0, p_deform_sr, _zero + p_deform_sr_1], dim=1)
         else:
             p_deform_sr = p_deform
@@ -785,7 +789,7 @@ class CatmullRomSurface():
     def fit(self, p, iters1=100, iters2=100, verbose=True, **kwargs):
     
         if not isinstance(p, torch.Tensor):
-            p = torch.tensor(p, dtype=torch.float, device='cuda') # (num_points, 3)
+            p = torch.tensor(p, dtype=torch.float, device=get_device()) # (num_points, 3)
 
         self.fitted = True
         self.fit_R(p, iters=iters1, verbose=verbose, **kwargs)
@@ -809,8 +813,8 @@ class CatmullRomSurface():
         if self.species == 'maize':
             s1_curved, pa, pb, idx = max_geodesic_distance(p.detach().cpu().numpy(), return_idx=True, max_points=5000, k=100) # use geodesic distance to estimate the scale of the input pcd
             # pab = torch.from_numpy(np.stack([pa, pb], axis=0)).float().cuda()
-            # s1 = torch.tensor(np.linalg.norm(pa-pb), dtype=torch.float, device='cuda')
-            s1 = torch.tensor(s1_curved, dtype=torch.float, device='cuda')
+            # s1 = torch.tensor(np.linalg.norm(pa-pb), dtype=torch.float, device=get_device())
+            s1 = torch.tensor(s1_curved, dtype=torch.float, device=get_device())
         else:
             s1 = get_radius(p, roubust=robust_training)
 
@@ -827,7 +831,7 @@ class CatmullRomSurface():
             p_transformed = p @ rot.T
             p_flat = self.evaluate(flat_only=True).reshape(-1, 2)
             p_flat_grid = p_flat.reshape(45, 43, 2)
-            p_flat = torch.cat([p_flat, torch.zeros((p_flat.shape[0], 1), device='cuda')], dim=1) # make it 3d
+            p_flat = torch.cat([p_flat, torch.zeros((p_flat.shape[0], 1), device=get_device())], dim=1) # make it 3d
             # scale based on the radius and time
             if self.species == 'maize':
                 s2 = torch.linalg.norm((p_flat_grid[-1, 43//2]-p_flat_grid[0, 43//2]))
@@ -852,7 +856,7 @@ class CatmullRomSurface():
                 fit_loss2 = torch.mean(torch.square(distances.min(dim=0)[0]))
             fit_loss = fit_loss1 + fit_loss2
 
-            leaf_tip_loss = torch.tensor(0.0, device='cuda')
+            leaf_tip_loss = torch.tensor(0.0, device=get_device())
             if self.species == 'maize':
                 leaf_tip_a = p_flat.reshape(45, 43, 3)[0, 43//2] # leaf root
                 leaf_tip_b = p_flat.reshape(45, 43, 3)[-1, 43//2]
@@ -888,8 +892,8 @@ class CatmullRomSurface():
             optimizer.step()
         print('s = ', self.s.item())
 
-        # self.faces = create_grid_faces(43, 45).to(device='cuda')
-        # self.adjacency = create_face_adjacency(self.faces).to(device='cuda')
+        # self.faces = create_grid_faces(43, 45).to(device=get_device())
+        # self.adjacency = create_face_adjacency(self.faces).to(device=get_device())
 
     def fit_all(self, p, iters=100, verbose=True, **kwargs) -> None:
         """
@@ -897,7 +901,7 @@ class CatmullRomSurface():
         """
         # robust_training = kwargs.get('robust_training', False)
 
-        thickness = nn.Parameter(torch.tensor(0.0, dtype=torch.float, device='cuda'), requires_grad=True)
+        thickness = nn.Parameter(torch.tensor(0.0, dtype=torch.float, device=get_device()), requires_grad=True)
 
         area_weight = 5e2
         if self.species == 'maize':
@@ -927,8 +931,8 @@ class CatmullRomSurface():
         else:
             bar = range(iters)
         
-        area_loss = torch.tensor(0.0, device='cuda')
-        normal_loss = torch.tensor(0.0, device='cuda')
+        area_loss = torch.tensor(0.0, device=get_device())
+        normal_loss = torch.tensor(0.0, device=get_device())
 
         for i in bar:
             optimizer.zero_grad()
@@ -969,12 +973,12 @@ class CatmullRomSurface():
             if i % 5 == 0:
                 end_loss = torch.mean(torch.square(p_end[[0,2]])) * 1e1 # make x and z of p_end close to 0
             else:
-                end_loss = torch.tensor(0.0, device='cuda')
+                end_loss = torch.tensor(0.0, device=get_device())
             
             if self.species == 'maize':
                 tip_loss = 0.5 * torch.norm(p_end - p_transformed[self.idx_b]) ** 2
             else:
-                tip_loss = torch.tensor(0.0, device='cuda')
+                tip_loss = torch.tensor(0.0, device=get_device())
 
             if i < iters // 2 or self.species == 'maize' or self.species == 'tobacco':
                 total_loss = fit_loss + area_loss + normal_loss + mean_loss + end_loss + tip_loss
@@ -998,13 +1002,13 @@ class CatmullRomSurface():
             # with torch.no_grad():
             #     leaf_main_vein = p_curved.reshape(43,45,3)[43//2]
             #     self_axis = calculate_local_axes(p_curved, mode='surface', p0=leaf_main_vein[0], p1=leaf_main_vein[-1])[0]
-            #     self_axis = torch.tensor(self_axis, dtype=torch.float, device='cuda')
+            #     self_axis = torch.tensor(self_axis, dtype=torch.float, device=get_device())
             #     # skeleton_rot = inner_points @ self_axis.T # the data that we need for PCA (shape-free)
             #     self.quat.data = matrix_to_quaternion(self_axis @ rot)
 
             # if robust_training:
             #     sigma_range = self.shape_sigma * 3 # 3 sigma
-            #     sigma_range = torch.tensor(sigma_range[:, None], device='cuda', dtype=torch.float)
+            #     sigma_range = torch.tensor(sigma_range[:, None], device=get_device(), dtype=torch.float)
             #     # self.dw.data = torch.clamp(self.dw, -1, 1)
             #     self.dw.data = torch.clamp(self.dw, -sigma_range, sigma_range)
 
