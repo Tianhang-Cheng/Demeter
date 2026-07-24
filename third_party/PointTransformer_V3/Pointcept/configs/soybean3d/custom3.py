@@ -55,7 +55,25 @@ scheduler = dict(
 
 # dataset settings
 dataset_type = "PlantDataset"
-data_root = "/home/tianhang/data/soybean/3d"
+# Point at the bundled sample point clouds. Each sample lives in its own
+# subfolder (e.g. ``65_i/normalized_pcd.pth``), so the ``split`` below selects
+# which sample to run; PlantDataset globs ``<data_root>/<split>/*.pth``.
+#
+# NOTE: Pointcept's Config imports this file as a module from a temp dir, so a
+# ``__file__``-relative path would resolve into that temp dir. Use an absolute
+# default and allow overriding via the ``DEMETER_DATA_ROOT`` env var or the CLI
+# (``data.test.data_root=/your/path``). ``_os`` is deleted so the config
+# namespace stays picklable (Config deep-copies it).
+import os as _os
+
+data_root = _os.environ.get(
+    "DEMETER_DATA_ROOT",
+    "/mnt/task_runtime/Demeter/sample_point_cloud/val",
+)
+del _os
+# Which sample subfolder to reconstruct. Override from the CLI, e.g.
+#   ... data.test.split=27_o
+test_split = "65_i"
 
 data = dict(
     num_classes=5,
@@ -138,7 +156,7 @@ data = dict(
     ),
     test=dict(
         type=dataset_type,
-        split="val",
+        split=test_split,
         data_root=data_root,
         transform=[
             dict(type="CenterShift", apply_z=True),

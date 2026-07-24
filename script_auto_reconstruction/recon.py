@@ -781,7 +781,7 @@ def reconstruction_3d(folder, species='soybean', **kwargs):
         new_parents[k] = v
 
     graph_save_path = os.path.join(params_dir, 'plant_graph.pth')
-    plant_graph = build_plant_graph(species, plant_id, new_parents, classes, curves, surfaces,
+    plant_graph = build_plant_graph(infer_dir, species, new_parents, classes, curves, surfaces,
                                     fit_folder=fit_dir,
                                     pca_stem_3d=pca_stem_3d,
                                     pca_leaf_3d=pca_leaf_3d,

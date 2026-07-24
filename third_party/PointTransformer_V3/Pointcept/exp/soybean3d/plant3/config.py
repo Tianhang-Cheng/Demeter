@@ -1,8 +1,8 @@
-weight = 'model_last'
+weight = 'exp/soybean3d/plant3/model/model_last.pth'
 resume = False
 evaluate = False
 test_only = False
-seed = 38615262
+seed = 48625008
 save_path = 'exp/soybean3d/plant3'
 num_worker = 16
 batch_size = 4
@@ -63,7 +63,8 @@ scheduler = dict(
     div_factor=10.0,
     final_div_factor=1000.0)
 dataset_type = 'PlantDataset'
-data_root = '/home/tianhang/data/soybean/3d'
+data_root = '/mnt/task_runtime/Demeter/sample_point_cloud/val'
+test_split = '65_i'
 data = dict(
     num_classes=5,
     ignore_index=-1,
@@ -71,7 +72,7 @@ data = dict(
     train=dict(
         type='PlantDataset',
         split='train',
-        data_root='/home/tianhang/data/soybean/3d',
+        data_root='/mnt/task_runtime/Demeter/sample_point_cloud/val',
         transform=[
             dict(type='CenterShift', apply_z=True),
             dict(
@@ -123,7 +124,7 @@ data = dict(
     val=dict(
         type='PlantDataset',
         split='val',
-        data_root='/home/tianhang/data/soybean/3d',
+        data_root='/mnt/task_runtime/Demeter/sample_point_cloud/val',
         transform=[
             dict(type='CenterShift', apply_z=True),
             dict(
@@ -143,8 +144,8 @@ data = dict(
         test_mode=False),
     test=dict(
         type='PlantDataset',
-        split='val',
-        data_root='/home/tianhang/data/soybean/3d',
+        split='65_i',
+        data_root='/mnt/task_runtime/Demeter/sample_point_cloud/val',
         transform=[
             dict(type='CenterShift', apply_z=True),
             dict(type='NormalizeColor')
