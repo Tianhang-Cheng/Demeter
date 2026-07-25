@@ -100,6 +100,19 @@ class PlantDataset(Dataset):
         normal = data["normal"]
         scene_id = data["scene_id"]
 
+        # `.pth` samples store torch tensors, but Pointcept transforms expect
+        # numpy arrays (e.g. CenterShift does ``coord.min(axis=0)`` and unpacks
+        # 3 values, which fails on a tensor). Convert here.
+        if isinstance(coord, torch.Tensor):
+            coord = coord.cpu().numpy()
+        if isinstance(color, torch.Tensor):
+            color = color.cpu().numpy()
+        if isinstance(normal, torch.Tensor):
+            normal = normal.cpu().numpy()
+        coord = np.asarray(coord, dtype=np.float32)
+        color = np.asarray(color, dtype=np.float32)
+        normal = np.asarray(normal, dtype=np.float32)
+
         if "semantic_gt5" in data.keys():
             segment = data["semantic_gt5"].reshape([-1])
         else:

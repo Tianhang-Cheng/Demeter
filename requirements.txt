@@ -7,3 +7,4 @@ networkx
 graphviz
 numba
 rembg
+trimesh

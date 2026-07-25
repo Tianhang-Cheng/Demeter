@@ -44,7 +44,7 @@ Install in editable mode
 pip install -e .
 ```
 
-for reconstruction from 3d point cloud, it is recommended to create a new envrionment following instruction in [Pointcept](https://github.com/Pointcept/Pointcept). But we recommend using manual annotation to create demeter parameters for now.
+for reconstruction from 3d point cloud (`script_auto_reconstruction`), a few extra dependencies (Point Transformer / Pointcept) are installed into this same `demeter` environment — no separate environment is needed; see [script_auto_reconstruction/readme.md](script_auto_reconstruction/readme.md#environment). We still recommend using manual annotation to create demeter parameters for now.
 
 ## 3. Usage
 
