@@ -25,3 +25,6 @@ demeter.egg-info
 /sample_leaf_data/soybean_rotated_mask/skeleton_viz
 /sample_leaf_data/soybean_rotated_mask/skeleton_pca_viz
 /sample_leaf_data/soybean_rotated_mask/texture*
+
+# downloaded from HF (TianhangCheng7/DemeterData); see script_fit_leaf_3d_pca/
+/leaf_deformed_mesh/

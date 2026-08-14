@@ -1,6 +1,6 @@
 # Demeter: A Parametric Model of Crop Plant Morphology from the Real World (ICCV 2025)
 
-[Project Page](https://tianhang-cheng.github.io/Demeter/) | [Mesh Dataset](https://huggingface.co/datasets/TianhangCheng7/DemeterSoybeanRawMesh)
+[Project Page](https://tianhang-cheng.github.io/Demeter/) | [Mesh Dataset](https://huggingface.co/datasets/TianhangCheng7/DemeterData)
 
 <img src="assets/teaser.png" alt="Demeter " width="600">
 
@@ -14,9 +14,15 @@ The processed 3d parametric plant samples are already included in the code.
 
 ### Raw data
 
-The raw soybean mesh data can be found on [Hugging Face](https://huggingface.co/datasets/TianhangCheng7/DemeterSoybeanRawMesh). It contains 607 unprocessed meshes, which can be used for 3D generation/representation learning. The main stem are aligned to y-axis and the bottom tip lies in (0,0,0). We will release the correspondent 2D images soon.
+The raw soybean mesh data can be found on [DemeterData](https://huggingface.co/datasets/TianhangCheng7/DemeterData). It contains 607 unprocessed meshes, which can be used for 3D generation/representation learning. The main stem are aligned to y-axis and the bottom tip lies in (0,0,0). We will release the correspondent 2D images soon.
 
 <img src="assets/dataset_row.png" alt="Demeter " width="600">
+
+### 3D leaf deformation data (for PCA training)
+
+Per-species arrays of fitted 3D leaf surfaces `[n_leaf, 43, 45, 3]` (hosted on
+[DemeterData](https://huggingface.co/datasets/TianhangCheng7/DemeterData)) are
+the samples used to fit `sample_params/<species>/3d_leaf_pca.pth`. 
 
 ## 2. Requirements
 
@@ -66,8 +72,12 @@ python decode.py --data_folder sample_params --sample_name 02 --species rose
 
 ### b) Reconstruction parametric plant from point cloud
 
-+ (Optional) Step 0: Fitting 2D leaf shape from images if you need other species
++ (Optional): Fitting 2D leaf shape from images if you need other species
 [script_process_leaf_contour/readme.md](script_process_leaf_contour/readme.md)
+
++ (Optional): Fitting 3D leaf shape from aligned leaf mesh array. See
+[script_fit_leaf_3d_pca/readme.md](script_fit_leaf_3d_pca/readme.md) for
+downloading the data and (re)fitting / visualizing the 3D leaf PCA.
 
 + Step 1: Get point cloud
 Monocular RGB video -> Raw 3D point clouds \
@@ -93,8 +103,9 @@ Please refer to [Helios Tutorial](https://github.com/PlantSimulationLab/PyHelios
 ## 4. Release Note
 
 - [ ] editing tutorial (TBD)
-- [ ] full soybean 2d image dataset (TBD)
+- [x] full soybean 2d image dataset (2026-8-13)
 - [x] learning leaf shape PCA from 2D leaf scanns (2026-5-26)
+- [x] release 3D leaf deformation arrays for 3D leaf PCA training (2026-8-13)
 - [x] building demeter representation from your own annotated 3d point cloud (2026-4-24)
 - [x] full soybean 3d dataset (2025-12-17)
 - [x] sample data of other species (2025-11-1)
