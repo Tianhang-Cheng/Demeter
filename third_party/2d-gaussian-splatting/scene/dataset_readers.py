@@ -154,6 +154,24 @@ def storePly(path, xyz, rgb):
     ply_data = PlyData([vertex_element])
     ply_data.write(path)
 
+def filterExtrinsicsByTrainViews(path, cam_extrinsics):
+    """Keep only the extrinsics listed in <path>/train_views.txt, if it exists."""
+    train_views_path = os.path.join(path, "train_views.txt")
+    if not os.path.exists(train_views_path):
+        return cam_extrinsics
+
+    with open(train_views_path) as train_views_file:
+        wanted = {line.strip() for line in train_views_file
+                  if line.strip() and not line.startswith("#")}
+    kept = {key: extr for key, extr in cam_extrinsics.items()
+            if os.path.basename(extr.name) in wanted}
+    if not kept:
+        print(f"WARNING: {train_views_path} matches none of the registered images, ignoring it")
+        return cam_extrinsics
+
+    print(f"Using {len(kept)}/{len(cam_extrinsics)} views listed in {train_views_path}")
+    return kept
+
 def readColmapSceneInfo(path, images, eval, llffhold=8):
     try:
         cameras_extrinsic_file = os.path.join(path, "sparse/0", "images.bin")
@@ -165,6 +183,12 @@ def readColmapSceneInfo(path, images, eval, llffhold=8):
         cameras_intrinsic_file = os.path.join(path, "sparse/0", "cameras.txt")
         cam_extrinsics = read_extrinsics_text(cameras_extrinsic_file)
         cam_intrinsics = read_intrinsics_text(cameras_intrinsic_file)
+
+    # Optional view whitelist written by Demeter_data/filter_frames.py --mode post:
+    # one image name per line, '#' comments allowed. Lets the frame QC drop blurry
+    # / poorly triangulated frames from training while their neighbours still
+    # support the poses. Absent file = train on every registered view.
+    cam_extrinsics = filterExtrinsicsByTrainViews(path, cam_extrinsics)
 
     reading_dir = "images" if images == None else images
     cam_infos_unsorted = readColmapCameras(cam_extrinsics=cam_extrinsics, cam_intrinsics=cam_intrinsics, images_folder=os.path.join(path, reading_dir))

@@ -11,6 +11,7 @@
 
 #define BOX_SIZE 1024
 
+#include <float.h>  // FLT_MAX, no longer pulled in transitively by the CUDA 12.8 headers
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 #include "simple_knn.h"
