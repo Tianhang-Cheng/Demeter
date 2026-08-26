@@ -7,8 +7,8 @@ from utils.device import set_device, get_device
 from representation.graph import PlantGraphFixedTopology
 from utils.pca import NodePCA
 from utils.graph import load_parent, load_class
-
-def decode_params(data_folder:str, sample_name:str, species:str='soybean', **kwargs):
+    
+def decode_params(data_folder:str, sample_name:str, species:str='soybean', return_mesh:bool=False, align_global:bool=True, **kwargs):
 
     instance_folder = os.path.join(data_folder, species, 'instances', sample_name)
 
@@ -37,7 +37,10 @@ def decode_params(data_folder:str, sample_name:str, species:str='soybean', **kwa
 
     with torch.no_grad():
         # align the plant to global X-axis to make it stand straight
-        mesh = plant_graph.generate(output_format='mesh', color='gray', align_global=True)
+        mesh = plant_graph.generate(output_format='mesh', color='gray', align_global=align_global)
+
+    if return_mesh:
+        return mesh
 
     axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.01)
     axis.translate([0, 0, 0])

@@ -28,3 +28,15 @@ demeter.egg-info
 
 # downloaded from HF (TianhangCheng7/DemeterData); see script_fit_leaf_3d_pca/
 /leaf_deformed_mesh/
+
+
+/sample_params/soybean/instance_unprocess
+/sample_params/ribes/instances
+/sample_params/rose/instances
+/sample_params/maize/instances
+/sample_params/tobacco/instances
+/sample_params/soybean/instances
+
+/temp.py
+/viz_together.py
+/build_transforms.py

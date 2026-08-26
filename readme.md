@@ -54,7 +54,26 @@ for reconstruction from 3d point cloud (`script_auto_reconstruction`), a few ext
 
 ## 3. Usage
 
-### a) Visualize parametric plant
+### download segmentation data
+
+The full processed data (including per-instance raw point clouds under
+`instances/*/raw` and every instance, some of which are too large to keep in
+the repository) is hosted on
+[DemeterData](https://huggingface.co/datasets/TianhangCheng7/DemeterData) as a
+single archive. Run the script below from the repository root to download and
+extract it, restoring the complete `sample_params/` folder.
+
+```bash
+set -euo pipefail
+REPO="TianhangCheng7/DemeterData"
+ARCHIVE="sample_params.tar.gz"
+hf download "$REPO" "$ARCHIVE" --repo-type dataset --local-dir .
+tar -xzf "$ARCHIVE"
+rm -f "$ARCHIVE"
+echo "Done. Processed data restored under ./sample_params"
+```
+
+### a) Visualize parametric plant & segmented point cloud
 
 decode demeter parameter to 3d mesh of soybean
 
@@ -68,6 +87,16 @@ python decode.py --data_folder sample_params --sample_name 10008da --species mai
 python decode.py --data_folder sample_params --sample_name 1 --species tobacco
 
 python decode.py --data_folder sample_params --sample_name 02 --species rose
+```
+
+visualize both parametric mesh and original segmented point cloud. `--show_segmentation_color` will make each instance pcd different color, otherwise original rgb color.
+
+```python
+python viz_segmentation.py --sample_name 24_o --species soybean --data_folder sample_params --show_segmentation_color
+
+python viz_segmentation.py --sample_name 08 --species ribes  --data_folder sample_params
+
+python viz_segmentation.py --sample_name 2_i --species soybean --data_folder sample_params 
 ```
 
 ### b) Reconstruction parametric plant from point cloud
