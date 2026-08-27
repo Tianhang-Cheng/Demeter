@@ -56,7 +56,9 @@ class NodePCA(nn.Module):
     
     def load(self, path):
         assert path.endswith('.pth'), 'Path must end with .pth'
-        load_dict = torch.load(path, weights_only=True)
+        # PCA checkpoints may have been written on CUDA.  Loading through the
+        # configured device keeps CPU-only visualization and decoding usable.
+        load_dict = torch.load(path, map_location=get_device(), weights_only=True)
         
         self.data_mean = load_dict['data_mean']
         self.components = load_dict['components']

@@ -10,11 +10,11 @@ Demeter is a plant parametric models that is learned from 3D scans of real-world
 
 ### Processed data
 
-The processed 3d parametric plant samples are already included in the code.
+Small processed 3D parametric plant examples are included in this repository.
 
 ### Raw data
 
-The raw soybean mesh data can be found on [DemeterData](https://huggingface.co/datasets/TianhangCheng7/DemeterData). It contains 607 unprocessed meshes, which can be used for 3D generation/representation learning. The main stem are aligned to y-axis and the bottom tip lies in (0,0,0). We will release the correspondent 2D images soon.
+The raw soybean mesh data can be found on [DemeterData](https://huggingface.co/datasets/TianhangCheng7/DemeterData). It contains 607 unprocessed meshes for 3D generation and representation learning. These raw scans are neither aligned nor segmented.
 
 <img src="assets/dataset_row.png" alt="Demeter " width="600">
 
@@ -23,6 +23,30 @@ The raw soybean mesh data can be found on [DemeterData](https://huggingface.co/d
 Per-species arrays of fitted 3D leaf surfaces `[n_leaf, 43, 45, 3]` (hosted on
 [DemeterData](https://huggingface.co/datasets/TianhangCheng7/DemeterData)) are
 the samples used to fit `sample_params/<species>/3d_leaf_pca.pth`. 
+
+### Full soybean parametric meshes and corresponding point-cloud segmentations (78 plants)
+
+The complete processed dataset is hosted on
+[DemeterData](https://huggingface.co/datasets/TianhangCheng7/DemeterData) as a
+single archive. It contains all 78 soybean instances, the sample instances for
+the other species, and their fitted parametric graphs and point-cloud
+segmentations. Within each `sample_params/<species>/instances/<sample>/`
+directory, `raw/*.ply` stores the per-organ segments in the original scan
+coordinate frame;
+
+Install the Hugging Face CLI with `pip install -U huggingface_hub`, then run the
+following commands from the repository root to restore the complete processed
+`sample_params/` folder:
+
+```bash
+set -euo pipefail
+REPO="TianhangCheng7/DemeterData"
+ARCHIVE="sample_params.tar.gz"
+hf download "$REPO" "$ARCHIVE" --repo-type dataset --local-dir .
+tar -xzf "$ARCHIVE"
+rm -f "$ARCHIVE"
+echo "Done. Processed data restored under ./sample_params"
+```
 
 ## 2. Requirements
 
@@ -54,25 +78,6 @@ for reconstruction from 3d point cloud (`script_auto_reconstruction`), a few ext
 
 ## 3. Usage
 
-### download segmentation data
-
-The full processed data (including per-instance raw point clouds under
-`instances/*/raw` and every instance, some of which are too large to keep in
-the repository) is hosted on
-[DemeterData](https://huggingface.co/datasets/TianhangCheng7/DemeterData) as a
-single archive. Run the script below from the repository root to download and
-extract it, restoring the complete `sample_params/` folder.
-
-```bash
-set -euo pipefail
-REPO="TianhangCheng7/DemeterData"
-ARCHIVE="sample_params.tar.gz"
-hf download "$REPO" "$ARCHIVE" --repo-type dataset --local-dir .
-tar -xzf "$ARCHIVE"
-rm -f "$ARCHIVE"
-echo "Done. Processed data restored under ./sample_params"
-```
-
 ### a) Visualize parametric plant & segmented point cloud
 
 decode demeter parameter to 3d mesh of soybean
@@ -89,14 +94,23 @@ python decode.py --data_folder sample_params --sample_name 1 --species tobacco
 python decode.py --data_folder sample_params --sample_name 02 --species rose
 ```
 
-visualize both parametric mesh and original segmented point cloud. `--show_segmentation_color` will make each instance pcd different color, otherwise original rgb color.
+Visualize both the parametric mesh and the original segmented point cloud.
+Download and extract the processed dataset above before running these examples.
+With `--show_segmentation_color`, each organ segment receives a distinct color;
+otherwise, the original RGB colors are used.
 
-```python
+```bash
 python viz_segmentation.py --sample_name 24_o --species soybean --data_folder sample_params --show_segmentation_color
 
 python viz_segmentation.py --sample_name 08 --species ribes  --data_folder sample_params
 
 python viz_segmentation.py --sample_name 2_i --species soybean --data_folder sample_params 
+```
+
+Visualize every soybean in the `instances` folder:
+
+```bash
+python viz_segmentation.py --batch --species soybean --data_folder sample_params --instance_root instances
 ```
 
 ### b) Reconstruction parametric plant from point cloud

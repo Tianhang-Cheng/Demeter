@@ -1,4 +1,5 @@
 import os
+import json
 import numpy as np
 import open3d as o3d
 import torch
@@ -7,10 +8,56 @@ from utils.device import set_device, get_device
 from representation.graph import PlantGraphFixedTopology
 from utils.pca import NodePCA
 from utils.graph import load_parent, load_class
-    
-def decode_params(data_folder:str, sample_name:str, species:str='soybean', return_mesh:bool=False, align_global:bool=True, **kwargs):
+from utils.rotation_pytorch3d import quaternion_to_matrix
 
-    instance_folder = os.path.join(data_folder, species, 'instances', sample_name)
+
+def raw_to_canonical_transform(instance_folder: str) -> np.ndarray:
+    """Return the rigid transform from a segmented scan to graph canonical space.
+
+    ``build_transforms.py`` precomputes this matrix (rotation from the fitted
+    main-stem quaternion plus the bottom translation) and stores it in
+    ``transform.json``.  Older archives lack the rotation, in which case it is
+    reconstructed from the fitted graph instead.
+    """
+    transform_path = os.path.join(instance_folder, 'transform.json')
+    with open(transform_path) as f:
+        data = json.load(f)
+
+    if 'main_stem_quat' in data:
+        return np.asarray(data['T_raw2canonical'], dtype=np.float64)
+
+    return _transform_from_graph(instance_folder, data)
+
+
+def _transform_from_graph(instance_folder: str, data: dict) -> np.ndarray:
+    """Reconstruct the raw->canonical transform from the fitted graph.
+
+    Fallback for ``transform.json`` files that predate the rotation field: the
+    main-stem quaternion lives in ``graph.pkl`` and is combined with the bottom
+    translation already stored in the JSON.
+    """
+    main_stem = str(data['main_stem'])
+    bottom = np.asarray(data['main_stem_end_points_bottom'], dtype=np.float64)
+
+    state = torch.load(
+        os.path.join(instance_folder, 'graph.pkl'), map_location='cpu', weights_only=True
+    )
+    quat_key = f'M_quat_{main_stem}'
+    if quat_key not in state:
+        raise KeyError(f'Missing {quat_key} in {instance_folder}/graph.pkl.')
+    rotation = quaternion_to_matrix(torch.as_tensor(state[quat_key])).cpu().numpy()
+
+    transform = np.eye(4, dtype=np.float64)
+    transform[:3, :3] = rotation
+    transform[:3, 3] = -rotation @ bottom
+    return transform
+
+
+def decode_params(data_folder:str, sample_name:str, species:str='soybean', return_mesh:bool=False,
+                  align_global:bool=True, instance_folder=None, **kwargs):
+
+    if instance_folder is None:
+        instance_folder = os.path.join(data_folder, species, 'instances', sample_name)
 
     # load class annotation
     classes = load_class(os.path.join(instance_folder, 'info','class.txt'))
