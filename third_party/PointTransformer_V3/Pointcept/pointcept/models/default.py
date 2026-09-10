@@ -1,3 +1,4 @@
+import math
 import torch.nn as nn
 import torch
 
@@ -7,66 +8,78 @@ import torch.nn.functional as F
 
 @MODELS.register_module()
 class DefaultCustom(nn.Module):
-    def __init__(self, backbone=None, criteria=None):
+    """Semantic head plus a scalar organ-boundary head.
+
+    ``dist_head`` is a bare linear layer, so its output is a logit.
+    ``dist_loss="bce"`` reads it as one and reports ``sigmoid(logit)``;
+    ``dist_loss="mse"`` reproduces the released recipe, which clips that logit to
+    [0, 1] and regresses it against the target with MSE -- the clip zeroes the
+    gradient wherever the logit leaves [0, 1].
+    """
+
+    def __init__(self, backbone=None, criteria=None, dist_loss="mse",
+                 dist_loss_weight=15.0, dist_pos_weight=None, dist_prior=None):
         super().__init__()
+        if dist_loss not in ("mse", "bce"):
+            raise ValueError(f"dist_loss must be 'mse' or 'bce', got {dist_loss!r}")
         self.backbone = build_model(backbone)
         self.criteria = build_criteria(criteria)
+        self.dist_loss = dist_loss
+        self.dist_loss_weight = dist_loss_weight
+        self.dist_pos_weight = dist_pos_weight
+        if dist_prior is not None:
+            self.init_boundary_prior(dist_prior)
+
+    def init_boundary_prior(self, prior):
+        """Start the boundary logit at `prior`, the mean of the training target.
+
+        AdamW moves a parameter by roughly the learning rate per step, so over the
+        ~1600 steps of a 100-epoch run this bias can travel about 0.4 in logit
+        space -- far short of the logit(0.112) = -2.07 that the target's own mean
+        needs. Regressing the clipped logit with MSE worked in probability space
+        and never had to cross that distance; cross-entropy does, so seed it.
+        """
+        if not 0.0 < prior < 1.0:
+            raise ValueError(f"dist_prior must be in (0, 1), got {prior}")
+        linear = [m for m in getattr(self.backbone, "dist_head", nn.Identity()).modules()
+                  if isinstance(m, nn.Linear) and m.bias is not None]
+        if not linear:
+            raise ValueError("dist_prior needs a backbone dist_head ending in a Linear with bias")
+        nn.init.constant_(linear[-1].bias, math.log(prior / (1.0 - prior)))
+
+    def boundary_loss(self, logit, target):
+        """Loss for the boundary head, against the truncated inverse-distance target."""
+        if self.dist_loss == "bce":
+            weight = (None if self.dist_pos_weight is None else
+                      torch.as_tensor(self.dist_pos_weight, device=logit.device,
+                                      dtype=logit.dtype))
+            # The target is soft (T / max(d, T) in (0, 1]), which cross-entropy accepts.
+            return F.binary_cross_entropy_with_logits(
+                logit, target, pos_weight=weight) * self.dist_loss_weight
+        return torch.mean(torch.square(torch.clip(logit, 0, 1) - target)) * self.dist_loss_weight
 
     def forward(self, input_dict):
         if "condition" in input_dict.keys():
             # PPT (https://arxiv.org/abs/2308.09718)
             # currently, only support one batch one condition
             input_dict["condition"] = input_dict["condition"][0]
-        seg_logits, dist = self.backbone(input_dict)
+        seg_logits, dist_logit = self.backbone(input_dict)
+        dist_logit = dist_logit[:, 0]
+        dist = (torch.sigmoid(dist_logit) if self.dist_loss == "bce"
+                else torch.clip(dist_logit, 0, 1))
 
-        dist = torch.clip(dist, 0, 1)
+        if "segment" not in input_dict.keys():
+            # test
+            return dict(seg_logits=seg_logits, dist=dist[:, None])
 
-        # print(torch.max(dist), torch.min(dist))
-        # if torch.max(dist) > 1.0:
-        #     # raise ValueError('dist max > 1.0')
-        #     print('dist max > 1.0')
-        #     exit()
-
-        if "segment" in input_dict.keys():
-            gt = input_dict["segment"]
-            segment = gt[:, 0].long()
-            # gt_distance = gt[:, 1].float() 
-            gt_distance = gt[:, 1:].float()  # ELYSIA
-            # print(segment[0:10])
-            # print(gt_distance[0:10])
-
-            # print(input_dict.keys())
-            # print(dist.shape)
-            # print(gt_distance.shape)
-            # print(input_dict["segment"].shape)
-            # print(seg_logits.shape)
-            # exit()
-        
-
+        gt = input_dict["segment"]
+        segment = gt[:, 0].long()
+        gt_distance = gt[:, 1].float()
+        loss = self.criteria(seg_logits, segment) + self.boundary_loss(dist_logit, gt_distance)
         if self.training:
-            dist_loss = torch.mean(torch.square(dist[:,0] - gt_distance[:,0])) * 15.0
-            # dist_loss1 = torch.mean(torch.abs(dist[:,0] - gt_distance[:,0])) * 15.0 # ELYSIA
-            # dist_loss2 = torch.mean(torch.abs(dist[:,1] - gt_distance[:,1])) * 15.0 # ELYSIA
-            # dist_loss = torch.mean(torch.abs(dist[:,0] - gt_distance)) * dist_weight
-            # dist_loss = F.binary_cross_entropy_with_logits(dist[:,0], gt_distance) * dist_weight
-            loss = self.criteria(seg_logits, segment)
-            print('loss = {:.4f}, dist_loss = {:.4f} \n'.format(loss.item(), dist_loss.item()))
-            # print('loss = {:.4f}, ll = {:.4f}, non_ll = {:.4f}'.format(loss.item(), dist_loss1.item(), dist_loss2.item()))
-            return dict(loss=loss + dist_loss) # ELYSIA
-            # return dict(loss=loss + dist_loss1 + dist_loss2)
+            return dict(loss=loss)
         # eval
-        elif "segment" in input_dict.keys():
-            dist_loss = torch.mean(torch.square(dist[:,0]  - gt_distance[:,0])) * 15.0
-            # dist_loss1 = torch.mean(torch.abs(dist[:,0] - gt_distance[:,0])) * 15.0 # ELYSIA
-            # dist_loss2 = torch.mean(torch.abs(dist[:,1] - gt_distance[:,1])) * 15.0 # ELYSIA
-            # dist_loss = torch.mean(torch.abs(dist[:,0] - gt_distance)) * dist_weight
-            # dist_loss = F.binary_cross_entropy_with_logits(dist[:,0], gt_distance) * dist_weight
-            loss = self.criteria(seg_logits, segment)
-            return dict(loss=loss + dist_loss, seg_logits=seg_logits)
-            # return dict(loss=loss + dist_loss1 + dist_loss2, seg_logits=seg_logits)
-        # test
-        else:
-            return dict(seg_logits=seg_logits, dist=dist)
+        return dict(loss=loss, seg_logits=seg_logits)
 
 
 # @MODELS.register_module()

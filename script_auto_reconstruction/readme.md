@@ -17,6 +17,25 @@ pip install third_party/PointTransformer_V3/Pointcept/libs/pointops
 
 The bundled recipe uses `PT-v2m2-custom`, despite the third-party directory's
 name. It does not require `spconv`. The repository's tested PyG version is 2.5.3.
+Keep `yapf` pinned: Pointcept's config dump calls `FormatCode(..., verify=True)`,
+which yapf removed after 0.31.
+
+`pointops` compiles CUDA kernels for the architectures PyTorch was built for. On
+a GPU newer than the wheel's targets (for example Blackwell, `sm_120`), name the
+architecture and the matching toolkit explicitly:
+
+```bash
+CUDA_HOME=/path/to/cuda-12.8 TORCH_CUDA_ARCH_LIST="12.0" \
+  pip install --no-build-isolation third_party/PointTransformer_V3/Pointcept/libs/pointops
+```
+
+Newer PyTorch also needs one edit in the vendored Pointcept: its schedulers
+forward `verbose=` to `torch.optim.lr_scheduler`, which dropped that argument in
+PyTorch 2.7. Dropping the forwarded argument restores the default behaviour:
+
+```bash
+sed -i '/^ *verbose=verbose,$/d' third_party/PointTransformer_V3/Pointcept/pointcept/utils/scheduler.py
+```
 
 ## Step 1: align and normalize the scan
 

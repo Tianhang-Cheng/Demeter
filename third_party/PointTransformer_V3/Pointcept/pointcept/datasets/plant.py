@@ -37,12 +37,17 @@ class PlantDataset(Dataset):
         test_cfg=None,
         cache=False,
         loop=1,
+        color_scale=1.0,
     ):
         super(PlantDataset, self).__init__()
         self.data_root = data_root
         self.split = split
         self.transform = Compose(transform)
         self.cache = cache
+        # The prepared samples store RGB in [0, 1], but the inherited Pointcept
+        # colour transforms are written for [0, 255]. Set 255.0 to hand them the
+        # range they expect; 1.0 keeps the released checkpoint's behaviour.
+        self.color_scale = color_scale
         self.loop = (
             loop if not test_mode else 1
         )  # force make loop = 1 while in test mode
@@ -111,7 +116,7 @@ class PlantDataset(Dataset):
         if isinstance(normal, torch.Tensor):
             normal = normal.cpu().numpy()
         coord = np.asarray(coord, dtype=np.float32)
-        color = np.asarray(color, dtype=np.float32)
+        color = np.asarray(color, dtype=np.float32) * self.color_scale
         normal = np.asarray(normal, dtype=np.float32)
 
         if "semantic_gt5" in data.keys():

@@ -716,8 +716,10 @@ class PointTransformerV2(nn.Module):
 
         seg_logits = self.seg_head(feat)
         dist = self.dist_head(feat) # logits for distance # ELYSIYA
-        dist = torch.clip(dist[:, -1:], 0, 1)
-        return seg_logits, dist
+        # Return the raw logit; the model head decides how to read it. Clipping
+        # here zeroed the gradient for every point whose logit went negative,
+        # which is why the released recipe's boundary score has a hard floor at 0.
+        return seg_logits, dist[:, -1:]
     
 # @MODELS.register_module("PT-v2m2-custom2")
 # class PointTransformerV2(nn.Module):

@@ -132,12 +132,15 @@ matching the original infinity handling. Missing RGB is filled with gray.
 `--keep-black` explicitly changes the filtering behavior. Degenerate plants
 with zero density threshold fail with an error.
 
-The fitted root quaternion aligns the main stem to +X. Coordinates are centered
-at the retained points' mean and divided by the sorted 95th-percentile radius
-computed from all original points around their mean. Normals are estimated in
-normalized coordinates (radius 0.1, at most 30 neighbors). Distances and `T` are
-both computed before scaling, so their ratio is scale invariant. Use
-`--alignment none` only for input already aligned to +X.
+The fitted root quaternion aligns the main stem to **+Z**, which is what all 78
+released plants come out as (the main stem's principal axis is within 17 degrees
+of +Z on every one). Coordinates are centered at the retained points' mean and
+divided by the sorted 95th-percentile radius computed from all original points
+around their mean. Normals are estimated in normalized coordinates (radius 0.1,
+at most 30 neighbors). Distances and `T` are both computed before scaling, so
+their ratio is scale invariant. Use `--alignment none` only for input already
+aligned to +Z. Note that `config.py`'s augmentation rotates about x as though the
+stem were along that axis; [`config_fixed.py`](config_fixed.py) corrects it.
 
 | Field | Shape / type | Meaning |
 | --- | --- | --- |
@@ -197,6 +200,65 @@ Use `--data-root` for a different generated dataset. `--epochs`, `--batch-size`,
 debugging. Training requires nonempty train/test splits and enough training
 samples for a complete batch. `--dry-run` checks paths and prints the command
 without launching Pointcept or writing outputs.
+
+### Recipes
+
+`--recipe released` (the default) reproduces the published config exactly and is
+what the released checkpoint was trained with. `--recipe fixed` selects
+[`config_fixed.py`](config_fixed.py), which corrects three defects measured in
+that config and inherits everything else unchanged:
+
+| | released | fixed |
+| --- | --- | --- |
+| colour units | `[0, 1]` data through `[0, 255]` transforms | `color_scale=255.0` |
+| azimuth rotation | ±180° about **x**, while plants align to +Z | ±180° about **z** |
+| boundary loss | MSE on the logit clipped to `[0, 1]` | `binary_cross_entropy_with_logits` |
+
+The colour defect is the largest: `ChromaticJitter` added noise with std 9.39 on
+top of a signal with std 0.185, and at test time `NormalizeColor` left a
+near-constant −0.997 (std 0.001), so three of the nine input channels were noise
+while training and a constant while testing. Colour is also the cue that
+separates petiole from leaf — the weakest class — and it does so consistently
+within a plant, in all 25 plants sampled.
+
+Swapping MSE for cross-entropy needs two accompanying changes, both recorded in
+`config_fixed.py`: `dist_loss_weight` drops from 15 to 1 (cross-entropy starts at
+ln 2 whatever the target, so weight 15 starts 17x above the released boundary term
+and flattens the semantic head), and `dist_prior` seeds the head's final bias at
+logit of the target mean (AdamW moves a parameter by about the learning rate per
+step, so a 100-epoch run cannot travel the −2.07 the target's mean requires;
+raising the loss weight does not help, because Adam is invariant to gradient
+scale).
+
+`config_fixed.py` is not compatible with the released checkpoint, because the
+colour fix changes the input distribution. Compare recipes at equal epochs — the
+default epoch counts differ enough to confound the comparison otherwise.
+
+### Throughput
+
+Training is **CPU-bound on the data pipeline**, not on the GPU. Each plant holds
+0.8-2 million points, and the per-sample transform chain (`ElasticDistortion`,
+`GridSample`) dominates; the network itself needs roughly 0.13 s per iteration.
+With the default `--workers 4`, one epoch of the 67-plant split measured about
+20 s on one RTX PRO 6000, of which only ~2 s was GPU compute. Raising
+`--workers` to 24 on a many-core host cut the same epoch to about 7 s. Set
+`--workers` to what the machine's cores and RAM allow before tuning anything else.
+
+The larger cost is the final test pass: the released recipe averages **13
+test-time augmentations** per plant, roughly 6 min per plant, so evaluating 11
+test plants takes about 65 min regardless of how long training took. `--tta`
+trades that accuracy averaging for time:
+
+| `--tta` | views | held-out evaluation |
+| --- | --- | --- |
+| `full` (default) | 13 | released recipe, ~6 min per plant |
+| `rot4` | 4 x-axis rotations | ~3x faster |
+| `single` | identity only | ~13x faster, ~30 s per plant |
+
+`--tta` applies to `train` (its automatic final test), `test` and `infer`. Any
+value other than `full` writes the derived config next to the run's other
+outputs, so the exact augmentation list stays recorded. Report headline numbers
+from `--tta full`; the smaller presets are for iteration and visualization.
 
 ### Train on another machine
 
@@ -270,6 +332,64 @@ The existing reconstruction method is approximate and still depends on scan and
 prediction quality; creating the training data does not guarantee a successful
 fit for every plant. Other species can use `--source` and `--species`, but the
 published checkpoint and this default training recipe target soybean.
+
+## 5. Inspect predictions
+
+`viz_predictions.py` turns a run's `result/` directory into a browsable report.
+It pairs every `<plant>_pred.npy` / `<plant>_pred_dist.npy` with the prepared
+ground truth, renders both heads offscreen from two azimuths, and writes
+`index.html` plus `metrics.json`:
+
+```bash
+python script_point_transformer/viz_predictions.py --run outputs/point_transformer/soybean
+```
+
+Each plant gets six panels: input RGB, ground-truth semantics, predicted
+semantics, a red error mask, and the ground-truth and predicted boundary
+scores. The table reports per-plant accuracy, mIoU, per-class IoU and boundary
+mean absolute error, computed on the full point set rather than on voxels, so
+these numbers are comparable across plants but are not Pointcept's own mIoU.
+
+Rendering uses Open3D's EGL offscreen renderer, so no display is needed.
+`--samples` limits which plants are drawn, `--max-points` caps the render
+subsample (metrics always use every point), and `--width`, `--height`,
+`--point-size`, `--azimuths` and `--elevation` control the renders. Pass
+`--output` to write elsewhere than `<run>/viz`.
+
+### Grouping points into organs
+
+The network predicts semantics and a boundary score, not instances; organs are
+grouped afterwards, so `--instance-eps` re-groups the same predictions three ways.
+Measured on the 11 held-out plants against 438 annotated organs:
+
+| `--instance-eps` | organs | coverage | matched@0.5 | assigned |
+| --- | --- | --- | --- | --- |
+| `graph-cut` (default) | 417 (0.95x) | **0.511** | 0.491 | 0.875 |
+| `spacing` (recon.py) | 750 (1.71x) | 0.466 | 0.503 | 0.740 |
+| `fixed` | 419 (0.96x) | 0.453 | 0.477 | 0.726 |
+
+Coverage is the best IoU per annotated organ against the **whole** organ, so points
+left unassigned count against it; `coverage` in `metrics.json` scores only the
+assigned points and is the more flattering of the two.
+
+`spacing` reproduces `recon.py`: delete the points scored above 0.15, then DBSCAN at
+a radius taken from the cloud's own spacing. Because preprocessing already puts every
+plant at unit radius, that ties the radius to point density rather than organ size —
+point count spans 77x across the released plants while plant size spans 1.7x, so dense
+scans split their organs. `fixed` removes the density dependence and corrects the organ
+count, but not the IoU. `graph-cut` drops the deletion step, which is what caps both:
+it cuts kNN edges that straddle a junction or a class change, so every point keeps an
+organ.
+
+None of the three fixes the real limit. Per-organ IoU is bimodal — 34% of organs land
+above 0.75 and 29% below 0.25, the latter being the thin petioles, which fragment.
+Substituting a **perfect** boundary score raises coverage only from 0.504 to 0.537, and
+seeding organs from the stem/petiole skeleton and growing geodesically scored *worse*
+(0.477), because organs being merged is already rare. Grouping is not where the
+remaining error is; a learned instance head is the change that would move it.
+
+`recon.py` still uses its own `spacing` clustering, so the reconstruction's meshes are
+unaffected by this default — only the report is.
 
 ## Verification
 
