@@ -131,6 +131,7 @@ Monocular RGB video -> Raw 3D point clouds \
 
 + Step 2, Option B: automatic multi-stage 3D point clouds -> Demeter parameters \
 [script_auto_reconstruction/readme.md](script_auto_reconstruction/readme.md)
+Prepared PointTransformer data (**67 train / 11 test**, 2.24 GB) is available on [Hugging Face](https://huggingface.co/datasets/TianhangCheng7/DemeterData/tree/main/point_transformer). See the [training guide](script_point_transformer/readme.md) for download commands and training.
 Note that this method is not accurate, so it's more recommanded to use manual segementation
 
 + Step 2, Option C: automatic feed-forward one-pass 3D point clouds -> Demeter parameters \

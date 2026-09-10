@@ -1,3 +1,8 @@
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 import torch
 import open3d as o3d
 import numpy as np
@@ -72,6 +77,10 @@ def reconstruction_3d(folder, species='soybean', **kwargs):
     model = torch.load(model_path, weights_only=True)
     coord = model['coord']
     color = model['color']
+    if isinstance(coord, torch.Tensor):
+        coord = coord.cpu().numpy()
+    if isinstance(color, torch.Tensor):
+        color = color.cpu().numpy()
     raw_input_pcd = o3d.geometry.PointCloud()
     raw_input_pcd.points = o3d.utility.Vector3dVector(coord)
     raw_input_pcd.colors = o3d.utility.Vector3dVector(color)
@@ -584,8 +593,11 @@ def reconstruction_3d(folder, species='soybean', **kwargs):
                     rotation_click_path = os.path.join(folder, 'rotation_click.txt')
                     if os.path.exists(rotation_click_path):
                         a, b = np.loadtxt(rotation_click_path)
-                    a = (a - viz_center) / viz_radius @ viz_rotation
-                    b = (b - viz_center) / viz_radius @ viz_rotation
+                        a = (a - viz_center) / viz_radius @ viz_rotation
+                        b = (b - viz_center) / viz_radius @ viz_rotation
+                    else:
+                        # Prepared scans already have the main stem aligned to +X.
+                        a, b = sorted((p0_end, p1_end), key=lambda p: p[0])
 
                     a_dist_p0 = np.linalg.norm(a - p0_end)
                     a_dist_p1 = np.linalg.norm(a - p1_end)
@@ -793,6 +805,7 @@ def reconstruction_3d(folder, species='soybean', **kwargs):
                                     n_iter=250,
                                     lr=1e-3,
                                     return_graph=True,
+                                    visualize=do_viz,
                                     retrain=retrain,
                                     full_plant_pcd_path=os.path.join(folder, 'pcd_unit_radius.ply'),
                                     )
@@ -822,7 +835,8 @@ def reconstruction_3d(folder, species='soybean', **kwargs):
     gt_pcd_viz.colors = o3d.utility.Vector3dVector(gt_pcd_colors)
     gt_pcd_viz.translate(-main_stem_end_points_bottom)
 
-    o3d.visualization.draw_geometries([gt_pcd_viz, predict_mesh, axis], mesh_show_back_face=True)
+    if do_viz:
+        o3d.visualization.draw_geometries([gt_pcd_viz, predict_mesh, axis], mesh_show_back_face=True)
 
     print('Saved plant graph to {}'.format(graph_save_path))
  
@@ -836,13 +850,14 @@ if __name__ == '__main__':
     # parser.add_argument('--do_viz', action='store_true', help='whether to visualize intermediate steps')
     parser.add_argument('--species', type=str, default='soybean', help='plant species')
     parser.add_argument('--data_folder', type=str, default=None, help='data folder name under sample_point_cloud')
+    parser.add_argument('--no-viz', action='store_true', help='run reconstruction without visualization windows')
     args = parser.parse_args()
 
     kwargs = {
         'retrain': False,
         'retrain_leaf': False,
         'retrain_stem': False,
-        'do_viz': True, # visualize intermediate steps
+        'do_viz': not args.no_viz,
     }
 
     data_folder = args.data_folder

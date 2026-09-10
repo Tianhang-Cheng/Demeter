@@ -131,6 +131,9 @@ class SemSegEvaluator(HookBase):
                 )
                 pred = pred[idx.flatten().long()]
                 segment = input_dict["origin_segment"]
+            # PlantDataset packs [semantic_id, inverse_distance] per point.
+            if segment.ndim == 2:
+                segment = segment[:, 0].long()
             intersection, union, target = intersection_and_union_gpu(
                 pred,
                 segment,

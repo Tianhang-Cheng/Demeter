@@ -11,6 +11,10 @@ demeter.egg-info
 
 /build_dynamic
 
+# Reproducible generated datasets and experiment outputs.
+/data/point_transformer/
+/outputs/
+
 *.DS_Store
 
 .vscode

@@ -96,7 +96,7 @@ class TesterBase:
             test_dataset,
             batch_size=self.cfg.batch_size_test_per_gpu,
             shuffle=False,
-            num_workers=self.cfg.batch_size_test_per_gpu,
+            num_workers=self.cfg.num_worker_per_gpu,
             pin_memory=True,
             sampler=test_sampler,
             collate_fn=self.__class__.collate_fn,
@@ -180,7 +180,7 @@ class SemSegTester(TesterBase):
             data_name = data_dict.pop("name")
             pred_save_path = os.path.join(save_path, "{}_pred.npy".format(data_name))
             pred_dist_save_path = os.path.join(save_path, "{}_pred_dist.npy".format(data_name))
-            if os.path.isfile(pred_save_path):
+            if os.path.isfile(pred_save_path) and os.path.isfile(pred_dist_save_path):
                 logger.info(
                     "{}/{}: {}, loaded pred and label.".format(
                         idx + 1, len(self.test_loader), data_name

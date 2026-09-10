@@ -87,7 +87,8 @@ class PlantDataset(Dataset):
     def get_data(self, idx):
         data_path = self.data_list[idx % len(self.data_list)]
         if not self.cache:
-            data = torch.load(data_path)
+            # Released legacy samples contain NumPy arrays; new samples use tensors.
+            data = torch.load(data_path, map_location="cpu", weights_only=False)
         else:
             data_name = data_path.replace(os.path.dirname(self.data_root), "").split(
                 "."
@@ -121,8 +122,14 @@ class PlantDataset(Dataset):
             instance = data["instance_gt"].reshape([-1])
         else:
             instance = np.ones(coord.shape[0]) * -1
+        if isinstance(segment, torch.Tensor):
+            segment = segment.cpu().numpy()
+        if isinstance(instance, torch.Tensor):
+            instance = instance.cpu().numpy()
         if "inv_dists" in data.keys():
             dist = data["inv_dists"].reshape([-1]) # ELYSIA
+            if isinstance(dist, torch.Tensor):
+                dist = dist.cpu().numpy()
             segment = np.stack([segment, dist], axis=-1) # ELYSIA
             # segment = np.concatenate([segment[:, None], dist], axis=-1)
         else:

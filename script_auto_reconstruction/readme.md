@@ -1,125 +1,103 @@
-# reconstruction demeter representation from raw 3d point cloud
+# Reconstruct Demeter from a point cloud
 
-note: this is a optimization based method, which highly rely on the quality of the input point cloud and cannot handle missing part of the raw data.
+For training from the released segmented point clouds, use the
+[PointTransformer guide](../script_point_transformer/readme.md). This guide
+covers a new scan with an existing checkpoint. Run commands from the repository
+root. Reconstruction depends on scan completeness and prediction quality.
 
 ## Environment
 
-All steps below run in the single `demeter` conda environment created in the [main readme](../readme.md#2-requirements)
-(there is no separate `pointcept` environment). Step 2 (Point Transformer) needs a few extra dependencies
-on top of the base environment; install them into the same env:
+Use the Linux/CUDA `demeter` environment from the [main README](../readme.md#2-requirements).
 
 ```bash
 conda activate demeter
-
-# extra dependencies for Step 2 (Point Transformer / Pointcept)
-pip install torch_scatter torch_cluster torch_geometric==2.5.3 addict SharedArray yapf==0.30.0
-
-# build the point-ops CUDA extension bundled with Pointcept
+pip install torch_scatter torch_cluster torch_geometric==2.5.3 addict SharedArray yapf==0.30.0 tensorboard
 pip install third_party/PointTransformer_V3/Pointcept/libs/pointops
 ```
 
-Note: `torch_geometric` is pinned to `2.5.3` (2.6+ requires `pyg-lib` for `voxel_grid`), and `spconv` is
-**not** required for the model used here.
+The bundled recipe uses `PT-v2m2-custom`, despite the third-party directory's
+name. It does not require `spconv`. The repository's tested PyG version is 2.5.3.
 
-## Step 1: align stem to X axis and normalized point cloud
-
-This script will normalize the data into mean offset and unit scale (95% points will within [−1,1]³), also align the main stem to X axis ([1, 0, 0]). And it requires manually click two points on the main stem to find the direction. First click should be  on the main stem bottom (yellow dot), second should be on another point near the top (blue dot), but no need to be exact. 
+## Step 1: align and normalize the scan
 
 ```bash
-python script_auto_reconstruction/normalize_data.py --point_path sample_point_cloud/val/27_o/pcd.ply
+python script_auto_reconstruction/normalize_data.py --point_path sample_point_cloud/val/65_i/pcd.ply
 ```
 
-<img src="../assets/before_annotate.png" alt="Demeter " width="300">
+Click the main stem bottom first, then a point toward its top. The script aligns
+this direction to +X, centers the scan and divides by its 95th-percentile radius.
+It saves `normalized_pcd.pth` and `transform.pkl` beside the scan. Existing
+rotation clicks can be reused.
 
-this requires the user to annotate 2 keypoints on the main stem (one bottom, one top) like the above image. 
+<img src="../assets/before_annotate.png" alt="Main stem alignment" width="300">
 
+## Step 2: infer semantics and boundary scores
 
-## Step 2: infer semantics (stem/leaf) and segmentation from point transformer
-
-Predict semantics and SDF between clusters using Point-Transformer (in the `demeter` conda environment, see the Environment section above).
-This process may take ~1 minute
-
-1. download the pretrained weight (`exp.zip`) from [Hugging Face](https://huggingface.co/TianhangCheng7/DemeterPointSeg/tree/main) and extract it to `third_party/PointTransformer_V3/Pointcept/exp`
+Download the published checkpoint from
+[DemeterPointSeg](https://huggingface.co/TianhangCheng7/DemeterPointSeg/tree/main):
 
 ```bash
-# from the repo root; downloads exp.zip and extracts to third_party/PointTransformer_V3/Pointcept/exp
-wget -O exp.zip https://huggingface.co/TianhangCheng7/DemeterPointSeg/resolve/main/exp.zip
+hf download TianhangCheng7/DemeterPointSeg exp.zip --local-dir .
 unzip -o exp.zip -d third_party/PointTransformer_V3/Pointcept/
-rm exp.zip
-
-# (alternative) using the huggingface_hub CLI
-# hf download TianhangCheng7/DemeterPointSeg exp.zip --local-dir . && \
-#   unzip -o exp.zip -d third_party/PointTransformer_V3/Pointcept/ && rm exp.zip
 ```
 
-After extraction you should have `third_party/PointTransformer_V3/Pointcept/exp/soybean3d/plant3/model/model_last.pth`.
-
-2. run command
+Use the shared runner to stage the scan, predict both outputs, and copy them
+into a fresh reconstruction directory:
 
 ```bash
-
-conda activate demeter
-
-cd third_party/PointTransformer_V3/Pointcept
-
-sh scripts/test.sh -p python -d soybean3d -c custom3 -n plant3 -g 1 -w model_last
-
-# copy the result from PointTransformer to the data folder (paths are relative to the Pointcept dir cd'd into above)
-cp exp/soybean3d/plant3/result/normalized_pcd_pred_dist.npy ../../../sample_point_cloud/val/65_i
-cp exp/soybean3d/plant3/result/normalized_pcd_pred.npy ../../../sample_point_cloud/val/65_i
-
+python script_point_transformer/run.py infer --sample sample_point_cloud/val/65_i/normalized_pcd.pth --weight third_party/PointTransformer_V3/Pointcept/exp/soybean3d/plant3/model/model_last.pth --output outputs/reconstruction/65_i
 ```
 
-## Step 3: build plant graph from prediction
+It produces `normalized_pcd_pred.npy` (semantic IDs) and
+`normalized_pcd_pred_dist.npy` (truncated inverse-distance scores). Larger
+scores indicate proximity to another organ; these are not signed distances.
+Add `--reconstruct` to also run Step 3 without visualization windows.
 
-Fit each node instance separately and combine them as a graph. The fitting may take ~1 minute for each node.
-
-use the demeter conda environment.
+## Step 3: build the graph and mesh
 
 ```bash
-conda activate demeter
-
-python script_auto_reconstruction/recon.py --data_folder sample_point_cloud/val/65_i --species soybean
+python script_auto_reconstruction/recon.py --data_folder outputs/reconstruction/65_i --species soybean --no-viz
 ```
 
-This writes the fitted parametric plant to the data folder, mainly `graph.pkl` (the plant graph:
-topology + per-node stem/leaf PCA parameters) together with `params/info/{parent,class}.txt`
-(topology and stem/leaf semantics). `predict.ply` is the reconstructed surface overlaid on the input,
-for quick inspection.
+Omit `--no-viz` for interactive visualization. Fitting may take roughly a minute
+per organ, depending on the point count and GPU. Outputs include `graph.pkl`,
+`params/plant_graph.pth`, `params/info/{parent,class}.txt`, individual fits in
+`fit/`, and the reconstructed triangle mesh `predict.ply`.
 
-## Step 4: decode the graph to a 3D mesh
+## Step 4: decode again
 
-Regenerate the plant mesh from the fitted graph with the top-level `decode.py`, which reads
-`<data_folder>/<species>/instances/<sample_name>/graph.pkl` (plus `info/{parent,class}.txt`), so first
-place Step 3's output there:
+`predict.ply` is already a mesh. To regenerate it from the fitted parameters,
+arrange the graph and annotations in a separate instance folder:
 
 ```bash
-mkdir -p sample_params/soybean/instances/65_i/info
-cp sample_point_cloud/val/65_i/graph.pkl         sample_params/soybean/instances/65_i/graph.pkl
-cp sample_point_cloud/val/65_i/params/info/*.txt sample_params/soybean/instances/65_i/info/
-
-python decode.py --data_folder sample_params --sample_name 65_i --species soybean
+mkdir -p outputs/reconstruction/65_i/decoded/info
+cp outputs/reconstruction/65_i/graph.pkl outputs/reconstruction/65_i/decoded/graph.pkl
+cp outputs/reconstruction/65_i/params/info/*.txt outputs/reconstruction/65_i/decoded/info/
+python decode.py --data_folder sample_params --species soybean --instance_folder outputs/reconstruction/65_i/decoded --output outputs/reconstruction/65_i/decoded.ply
 ```
 
-### Visualization (if do_viz=True)
+The species PCA models come from `sample_params/`; the fitted plant comes from
+`--instance_folder`. `--output` exports without opening a visualization window.
+Generated results stay under `outputs/`, preserving the released source data.
 
-1. Point transformer predicts inter-cluster distances for each points, we detect boundary points (red area) by a threshold.
+## Pipeline visualization
 
-<img src="../assets/distance.png" alt="Demeter " width="300">
+Boundary scores identify points to remove before clustering:
 
-2. Point transformer predicts semantics. Pink is main stem, purple is other stems, green is leaf.
+<img src="../assets/distance.png" alt="Boundary scores" width="300">
 
-<img src="../assets/semantics.png" alt="Demeter " width="300">
+Semantics distinguish the main stem, other stems and leaves:
 
-3. Use DBSCAN to get initial cluster
+<img src="../assets/semantics.png" alt="Semantic predictions" width="300">
 
-<img src="../assets/init_segmentation.png" alt="Demeter " width="300">
+DBSCAN separates the remaining points into organ instances:
 
-4. Add boundary points to nearest cluster
+<img src="../assets/init_segmentation.png" alt="Initial instances" width="300">
 
-<img src="../assets/fixed_segmentation.png" alt="Demeter " width="300">
+Removed points are assigned to the nearest cluster:
 
-5. Final Reconstruction overlapped with input point cloud
+<img src="../assets/fixed_segmentation.png" alt="Completed instances" width="300">
 
+The fitted reconstruction is compared with the input:
 
-<img src="../assets/recon.png" alt="Demeter " width="300">
+<img src="../assets/recon.png" alt="Reconstruction" width="300">

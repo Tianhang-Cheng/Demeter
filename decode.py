@@ -103,6 +103,8 @@ if __name__ == "__main__":
     parser.add_argument('--sample_name', type=str, default=None, help='name of the sample to process')
     parser.add_argument('--species', type=str, default='soybean', help='species of the plant')
     parser.add_argument('--draw_graph', action='store_true', help='whether to draw the graph structure')
+    parser.add_argument('--instance_folder', help='read graph.pkl and info/ from this directory')
+    parser.add_argument('--output', help='export the decoded mesh to this file without visualization')
     parser.add_argument('--device', type=str, default='auto', choices=['auto', 'cpu', 'cuda'], help='device to use (auto, cpu, or cuda)')
     args = parser.parse_args()
 
@@ -114,9 +116,19 @@ if __name__ == "__main__":
     sample_name = args.sample_name
     species = args.species
 
-    if sample_name is not None:
-        decode_params(data_folder, sample_name, species)
+    if sample_name is not None or args.instance_folder is not None:
+        mesh = decode_params(data_folder, sample_name, species,
+                             instance_folder=args.instance_folder,
+                             draw_graph=args.draw_graph, return_mesh=bool(args.output))
+        if args.output:
+            os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
+            if not o3d.io.write_triangle_mesh(args.output, mesh):
+                raise RuntimeError(f'Could not write mesh to {args.output}')
+            print(f'Saved mesh to {args.output}')
         exit(0)
+
+    if args.output:
+        parser.error('--output requires --sample_name or --instance_folder')
 
     # example usage 2
     data_folder = 'sample_params'
