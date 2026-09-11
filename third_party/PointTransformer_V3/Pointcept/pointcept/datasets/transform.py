@@ -1093,6 +1093,35 @@ class ContrastiveViewsGenerator(object):
 
 
 @TRANSFORMS.register_module()
+class PlantInstanceCentroid(object):
+    """Per-point centroid of the organ that point belongs to, in the current frame.
+
+    ``InstanceParser`` cannot be used here: PlantDataset stacks ``segment`` into an
+    (N, 2) array of semantic label and boundary target, which its ``np.in1d`` call
+    would flatten. This only touches ``instance`` and ``coord``, and must run after
+    the geometric transforms so the centroid matches the coordinates the network sees.
+    """
+
+    def __init__(self, instance_ignore_index=-1):
+        self.instance_ignore_index = instance_ignore_index
+
+    def __call__(self, data_dict):
+        coord = np.asarray(data_dict["coord"], dtype=np.float32)
+        instance = np.asarray(data_dict["instance"]).reshape(-1)
+        centroid = np.full_like(coord, self.instance_ignore_index)
+        valid = instance != self.instance_ignore_index
+        if valid.any():
+            _, inverse = np.unique(instance[valid], return_inverse=True)
+            total = np.zeros((inverse.max() + 1, 3), dtype=np.float64)
+            count = np.zeros(inverse.max() + 1, dtype=np.float64)
+            np.add.at(total, inverse, coord[valid])
+            np.add.at(count, inverse, 1.0)
+            centroid[valid] = (total / count[:, None])[inverse].astype(np.float32)
+        data_dict["instance_centroid"] = centroid
+        return data_dict
+
+
+@TRANSFORMS.register_module()
 class InstanceParser(object):
     def __init__(self, segment_ignore_index=(-1, 0, 1), instance_ignore_index=-1):
         self.segment_ignore_index = segment_ignore_index

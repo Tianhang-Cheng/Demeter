@@ -601,6 +601,7 @@ class PointTransformerV2(nn.Module):
         drop_path_rate=0,
         enable_checkpoint=False,
         unpool_backend="map",
+        predict_offset=False,
     ):
         super(PointTransformerV2, self).__init__()
         self.in_channels = in_channels
@@ -691,6 +692,18 @@ class PointTransformerV2(nn.Module):
                 # nn.Linear(dec_channels[0], 1),
                 nn.Linear(dec_channels[0], 1), # ELYSIYA
             ))
+        # Optional third head: the vector from each point to its own organ centroid.
+        # Off by default, so the released checkpoint's state dict is unchanged.
+        self.offset_head = (
+            nn.Sequential(
+                nn.Linear(dec_channels[0], dec_channels[0]),
+                PointBatchNorm(dec_channels[0]),
+                nn.ReLU(inplace=True),
+                nn.Linear(dec_channels[0], 3),
+            )
+            if predict_offset
+            else None
+        )
 
     def forward(self, data_dict):
         coord = data_dict["coord"]
@@ -719,7 +732,9 @@ class PointTransformerV2(nn.Module):
         # Return the raw logit; the model head decides how to read it. Clipping
         # here zeroed the gradient for every point whose logit went negative,
         # which is why the released recipe's boundary score has a hard floor at 0.
-        return seg_logits, dist[:, -1:]
+        if self.offset_head is None:
+            return seg_logits, dist[:, -1:]
+        return seg_logits, dist[:, -1:], self.offset_head(feat)
     
 # @MODELS.register_module("PT-v2m2-custom2")
 # class PointTransformerV2(nn.Module):

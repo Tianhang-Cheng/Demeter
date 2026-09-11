@@ -18,7 +18,8 @@ class DefaultCustom(nn.Module):
     """
 
     def __init__(self, backbone=None, criteria=None, dist_loss="mse",
-                 dist_loss_weight=15.0, dist_pos_weight=None, dist_prior=None):
+                 dist_loss_weight=15.0, dist_pos_weight=None, dist_prior=None,
+                 offset_loss_weight=0.0, offset_direction_weight=0.0):
         super().__init__()
         if dist_loss not in ("mse", "bce"):
             raise ValueError(f"dist_loss must be 'mse' or 'bce', got {dist_loss!r}")
@@ -27,6 +28,12 @@ class DefaultCustom(nn.Module):
         self.dist_loss = dist_loss
         self.dist_loss_weight = dist_loss_weight
         self.dist_pos_weight = dist_pos_weight
+        # Weight for the optional offset head (PointGroup-style organ centroids).
+        self.offset_loss_weight = offset_loss_weight
+        # PointGroup pairs the L1 with a direction term; measured offset error here
+        # is directional (predicted magnitude already matches the target's), so the
+        # L1 alone leaves the part that decides whether organs separate.
+        self.offset_direction_weight = offset_direction_weight
         if dist_prior is not None:
             self.init_boundary_prior(dist_prior)
 
@@ -58,24 +65,50 @@ class DefaultCustom(nn.Module):
                 logit, target, pos_weight=weight) * self.dist_loss_weight
         return torch.mean(torch.square(torch.clip(logit, 0, 1) - target)) * self.dist_loss_weight
 
+    def centroid_loss(self, offset, input_dict):
+        """L1 between the predicted and true vector to the organ centroid.
+
+        Averaged over the points that belong to an organ, so points the annotation
+        leaves out contribute nothing rather than pulling the head towards zero.
+        """
+        instance = input_dict["instance"].reshape(-1)
+        target = input_dict["instance_centroid"] - input_dict["coord"]
+        mask = (instance != -1).float()
+        total = torch.sum(mask) + 1e-8
+        error = torch.sum(torch.abs(offset - target), dim=-1)
+        loss = (torch.sum(error * mask) / total) * self.offset_loss_weight
+        if self.offset_direction_weight:
+            unit_target = target / (torch.norm(target, dim=-1, keepdim=True) + 1e-8)
+            unit_offset = offset / (torch.norm(offset, dim=-1, keepdim=True) + 1e-8)
+            cosine = -torch.sum(unit_target * unit_offset, dim=-1)
+            loss = loss + (torch.sum(cosine * mask) / total) * self.offset_direction_weight
+        return loss
+
     def forward(self, input_dict):
         if "condition" in input_dict.keys():
             # PPT (https://arxiv.org/abs/2308.09718)
             # currently, only support one batch one condition
             input_dict["condition"] = input_dict["condition"][0]
-        seg_logits, dist_logit = self.backbone(input_dict)
+        predicted = self.backbone(input_dict)
+        seg_logits, dist_logit = predicted[0], predicted[1]
+        offset = predicted[2] if len(predicted) > 2 else None
         dist_logit = dist_logit[:, 0]
         dist = (torch.sigmoid(dist_logit) if self.dist_loss == "bce"
                 else torch.clip(dist_logit, 0, 1))
 
         if "segment" not in input_dict.keys():
             # test
-            return dict(seg_logits=seg_logits, dist=dist[:, None])
+            result = dict(seg_logits=seg_logits, dist=dist[:, None])
+            if offset is not None:
+                result["offset_pred"] = offset
+            return result
 
         gt = input_dict["segment"]
         segment = gt[:, 0].long()
         gt_distance = gt[:, 1].float()
         loss = self.criteria(seg_logits, segment) + self.boundary_loss(dist_logit, gt_distance)
+        if offset is not None and self.offset_loss_weight:
+            loss = loss + self.centroid_loss(offset, input_dict)
         if self.training:
             return dict(loss=loss)
         # eval

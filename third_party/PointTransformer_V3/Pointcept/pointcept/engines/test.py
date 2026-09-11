@@ -195,6 +195,9 @@ class SemSegTester(TesterBase):
                 # pred_dist_all = torch.zeros((segment.size, 1)).cuda().float() # ELYSIA
                 pred_dist_all = torch.zeros((segment.size, 1)).cuda().float() # ELYSIA
                 pred_dist_all_count = torch.zeros((segment.size)).cuda().float()
+                # Local only: keep the optional offset head's output so instances
+                # can be clustered in the shifted space.
+                pred_offset_all = None
                 for i in range(len(fragment_list)):
                     fragment_batch_size = 1
                     s_i, e_i = i * fragment_batch_size, min(
@@ -209,6 +212,10 @@ class SemSegTester(TesterBase):
                         pred_dict = self.model(input_dict)
                         # pred_dist = pred_dict["dist"][:, 0]
                         pred_dist = pred_dict["dist"]
+                        pred_offset = pred_dict.get("offset_pred")
+                        if pred_offset is not None and pred_offset_all is None:
+                            pred_offset_all = torch.zeros(
+                                (segment.size, pred_offset.shape[1])).cuda().float()
 
                         # print(pred_dist.shape)
                         # print(torch.max(pred_dist), torch.min(pred_dist))
@@ -221,6 +228,8 @@ class SemSegTester(TesterBase):
                         for be in input_dict["offset"]:
                             pred[idx_part[bs:be], :] += pred_part[bs:be] 
                             pred_dist_all[idx_part[bs:be]] += pred_dist[bs:be]
+                            if pred_offset_all is not None:
+                                pred_offset_all[idx_part[bs:be]] += pred_offset[bs:be]
                             pred_dist_all_count[idx_part[bs:be]] += 1
 
                             bs = be
@@ -242,6 +251,10 @@ class SemSegTester(TesterBase):
                 # print(np.max(pred_dist_all_count), np.min(pred_dist_all_count))
                 np.save(pred_save_path, pred)
                 np.save(pred_dist_save_path, pred_dist_all)
+                if pred_offset_all is not None:
+                    # pred_dist_all_count is already numpy by this point.
+                    np.save(os.path.join(save_path, "{}_pred_offset.npy".format(data_name)),
+                            pred_offset_all.data.cpu().numpy() / pred_dist_all_count[:, None])
                 # exit()
 
             if "origin_segment" in data_dict.keys():
