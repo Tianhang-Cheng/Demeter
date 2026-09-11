@@ -51,9 +51,18 @@ Allow about 4.28 GB for the extracted data, plus space for the archive.
 Then continue with [training](#3-train-or-fine-tune).
 
 For reproducible downloads, add
-`--revision b5f4e16387a4d7b27ef85d2d87f2c0673448b6cd` to `hf download`.
+`--revision 6a5452daf27ccff3f499e8d44480ad6518b09f4c` to `hf download`.
 The archive SHA-256 is
-`f8c34f2464a65721bbe195c86077cf12f914af4f8a0ab9e35bd7b5f9ac990a59`.
+`893fa047f8ea2a29f8392cf9061b1b8c3e2b30218d45101e0bf2184e161b6ee2`.
+
+That archive replaced an earlier one on 2026-09-10. The earlier build left every
+main stem on +Z instead of +X, which costs the released checkpoint 0.16 pooled
+mIoU (0.300 against 0.463) and puts a trained model 90 degrees away from what
+`normalize_data.py` hands it for a new scan. A prepared dataset now records
+`stem_axis` in its manifest; if yours does not have that field, it is the old
+build. The previous archive is still reachable at revision
+`b5f4e16387a4d7b27ef85d2d87f2c0673448b6cd` (SHA-256
+`f8c34f2464a65721bbe195c86077cf12f914af4f8a0ab9e35bd7b5f9ac990a59`).
 
 ### Optional: restore source point clouds to regenerate the data
 
