@@ -78,6 +78,17 @@ Add `--reconstruct` to also run Step 3 without visualization windows.
 python script_auto_reconstruction/recon.py --data_folder outputs/reconstruction/65_i --species soybean --no-viz
 ```
 
+The step that turns predictions into organs — drop the points the boundary head
+calls a junction, then cluster the rest — lives in
+[`utils/instances.py`](../utils/instances.py), shared with
+`script_point_transformer/viz_predictions.py` so the two cannot drift apart.
+`--instance-method` selects it: `spacing` (default) is the published behaviour,
+and `graph_cut` cuts kNN edges instead of deleting points, which on the held-out
+plants raises coverage from 0.466 to 0.511 and leaves 87% of points assigned
+rather than 74%. Scores for all three are in the
+[PointTransformer guide](../script_point_transformer/readme.md#grouping-points-into-organs);
+the fit downstream has not been re-tuned for anything but `spacing`.
+
 Omit `--no-viz` for interactive visualization. Fitting may take roughly a minute
 per organ, depending on the point count and GPU. Outputs include `graph.pkl`,
 `params/plant_graph.pth`, `params/info/{parent,class}.txt`, individual fits in

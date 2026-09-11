@@ -9,11 +9,13 @@ Measured against the released recipe on the prepared 67/11 soybean split:
    the nine input channels were noise while training and a constant while
    testing. `color_scale=255.0` hands those transforms the range they expect.
 
-2. **Rotation axis.** Preprocessing aligns every main stem to +Z (verified on all
-   78 released plants), so the released +-180 degree rotation about x tipped
-   plants sideways or upside-down, while the azimuth the data really is invariant
-   to got only +-2.8 degrees. The big rotation moves to z and the small jitter to
-   x and y, which is the convention the transform list was inherited under.
+2. **Rotation axis: withdrawn.** An earlier version of this file rotated about z,
+   on the evidence that every released plant came out with its main stem on +Z.
+   The released checkpoint settled it the other way -- it scores 0.97 on +X input
+   against 0.90 on +Z -- so the recipe's rotation about x was right all along and
+   `prepare_data.py` was the thing that had drifted. That is fixed at the source
+   now (`--stem-axis x`, the default), and this file inherits config.py's
+   augmentation unchanged.
 
 3. **Boundary loss.** `dist_head` is a bare `nn.Linear(..., 1)`, so its output is
    a logit; the released recipe clipped it to [0, 1] and regressed it with MSE,
@@ -48,60 +50,7 @@ grid_size = 0.02
 model = dict(dist_loss="bce", dist_loss_weight=1.0, dist_prior=0.1124)
 
 data = dict(
-    train=dict(
-        color_scale=255.0,  # fix 1
-        transform=[
-            dict(type="CenterShift", apply_z=True),
-            dict(
-                type="RandomDropout", dropout_ratio=0.2, dropout_application_ratio=0.2
-            ),
-            # Fix 2: the main stem is along +Z, so z carries the free azimuth and
-            # x / y only get the small jitter that models a slightly tilted scan.
-            dict(type="RandomRotate", angle=[-1, 1], axis="z", center=[0, 0, 0], p=0.5),
-            dict(type="RandomRotate", angle=[-1 / 64, 1 / 64], axis="x", p=0.5),
-            dict(type="RandomRotate", angle=[-1 / 64, 1 / 64], axis="y", p=0.5),
-            dict(type="RandomScale", scale=[0.9, 1.1]),
-            dict(type="RandomFlip", p=0.5),
-            dict(type="RandomJitter", sigma=0.005, clip=0.02),
-            dict(type="ElasticDistortion", distortion_params=[[0.2, 0.4], [0.8, 1.6]]),
-            dict(type="ChromaticAutoContrast", p=0.2, blend_factor=None),
-            dict(type="ChromaticTranslation", p=0.95, ratio=0.05),
-            dict(type="ChromaticJitter", p=0.95, std=0.05),
-            dict(
-                type="GridSample",
-                grid_size=grid_size,
-                hash_type="fnv",
-                mode="train",
-                return_grid_coord=True,
-            ),
-            dict(type="CenterShift", apply_z=False),
-            dict(type="NormalizeColor"),
-            dict(type="ShufflePoint"),
-            dict(type="ToTensor"),
-            dict(
-                type="Collect",
-                keys=("coord", "segment"),
-                feat_keys=("coord", "color", "normal"),
-            ),
-        ],
-    ),
+    train=dict(color_scale=255.0),   # fix 1
     val=None,
-    test=dict(
-        color_scale=255.0,  # fix 1
-        test_cfg=dict(
-            # Fix 2: average test-time rotations about the plant's own up axis.
-            aug_transform=[
-                [dict(type="RandomRotateTargetAngle", angle=[angle], axis="z",
-                      center=[0, 0, 0], p=1)]
-                for angle in (0, 1 / 2, 1, 3 / 2)
-            ] + [
-                [dict(type="RandomRotateTargetAngle", angle=[angle], axis="z",
-                      center=[0, 0, 0], p=1),
-                 dict(type="RandomScale", scale=[scale, scale])]
-                for scale in (0.95, 1.05) for angle in (0, 1 / 2, 1, 3 / 2)
-            ] + [
-                [dict(type="RandomFlip", p=1)],
-            ],
-        ),
-    ),
+    test=dict(color_scale=255.0),   # fix 1
 )

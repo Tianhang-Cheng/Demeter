@@ -12,6 +12,8 @@ import tqdm
 import pickle
 
 from utils.pcd import get_min_dist, segment_pcd_DBSCAN, find_farthest_points_batch_torch, compute_frenet_serret_frame
+from utils.instances import as_clusters, boundary_threshold, group_organs
+from utils.frames import load_transform, scan_scale
 from utils.graph import get_guessed_parent, load_parent, save_class, save_parent, max_geodesic_distance, find_layers_and_paths, calculate_accumulation_values
 from utils.constant import *
 from utils.rotation_pytorch3d import quaternion_to_matrix
@@ -35,7 +37,7 @@ semantics_color_map = np.array([
 def _detach(x):
     return x.detach().cpu().numpy()
 
-def reconstruction_3d(folder, species='soybean', **kwargs):
+def reconstruction_3d(folder, species='soybean', instance_method='spacing', **kwargs):
 
     plant_id = os.path.basename(folder)
 
@@ -67,9 +69,9 @@ def reconstruction_3d(folder, species='soybean', **kwargs):
         # raise a warning here
         print(f"Warning: transform.pkl not found in {folder}, using default visualization parameters")
     else:
-        transform_dict = pickle.load(open(os.path.join(folder, 'transform.pkl'), 'rb'))
+        transform_dict = load_transform(folder)
         viz_rotation = transform_dict['rotation']
-        viz_radius = transform_dict.get('normalize_divisor', transform_dict['radius'])
+        viz_radius = scan_scale(transform_dict)
         viz_center = transform_dict['bbox_center']
 
     # load input coordiantes
@@ -141,10 +143,7 @@ def reconstruction_3d(folder, species='soybean', **kwargs):
 
         # mask = (pred_dist < 0.17) # non-boundary points are those with distance < T
         # pred_dist = pred_dist / np.max(pred_dist)
-        if species == 'soybean':
-            mask = pred_dist < 0.15 # soybean
-        else:
-            mask = pred_dist < 0.4
+        mask = pred_dist < boundary_threshold(species)
 
         coord_masked = coord[mask]
         assert len(coord_masked) > 0
@@ -187,10 +186,13 @@ def reconstruction_3d(folder, species='soybean', **kwargs):
             o3d.visualization.draw_geometries([pcd_sem])
 
 
-        # Perform # DBSCAN clustering
-        instances_filtered, n_clusters, clustered_points, semantics_filtered = segment_pcd_DBSCAN(
-            coord_masked, eps=pred_avg_self_dist*0.9, min_samples=8, semantic=semantics_masked,
-        )
+        # Group points into organs. Shared with viz_predictions.py via
+        # utils/instances.py so the report measures what this actually does;
+        # "spacing" is the historical behaviour and stays the default.
+        organ_labels = group_organs(coord, pred_dist, pred_semantics, species=species,
+                                    method=instance_method)
+        instances_filtered, n_clusters, clustered_points, semantics_filtered = as_clusters(
+            coord, organ_labels, pred_semantics)
 
         print(f"Number of clusters found: {n_clusters}")
         cluster_viz = []
@@ -851,6 +853,10 @@ if __name__ == '__main__':
     parser.add_argument('--species', type=str, default='soybean', help='plant species')
     parser.add_argument('--data_folder', type=str, default=None, help='data folder name under sample_point_cloud')
     parser.add_argument('--no-viz', action='store_true', help='run reconstruction without visualization windows')
+    parser.add_argument('--instance-method', choices=('spacing', 'fixed', 'graph_cut'),
+                        default='spacing',
+                        help='how to group points into organs; spacing is the published '
+                             'behaviour, graph_cut scores best on the held-out plants')
     args = parser.parse_args()
 
     kwargs = {
@@ -862,7 +868,8 @@ if __name__ == '__main__':
 
     data_folder = args.data_folder
     if data_folder is not None:
-        reconstruction_3d(data_folder, species=args.species, **kwargs)
+        reconstruction_3d(data_folder, species=args.species,
+                          instance_method=args.instance_method, **kwargs)
         exit(0)
 
 

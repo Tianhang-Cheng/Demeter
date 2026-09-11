@@ -10,10 +10,14 @@ from scipy.spatial import cKDTree
 from scipy.spatial.transform import Rotation
 import torch
 
+from utils.frames import (CANONICAL_STEM_AXIS, TRAINING_STEM_AXIS,
+                          canonical_to_training, check_stem_axis)
+
 
 REPO = Path(__file__).resolve().parents[1]
 CLASS_MAP = {0: 0, 1: 1, 2: 3, 3: 4}
 CLASS_NAMES = ["leaf", "other_stem", "main_stem", "flower", "fruit"]
+MAIN_STEM_CLASS = CLASS_NAMES.index("main_stem")
 
 
 def read_annotations(folder):
@@ -58,18 +62,28 @@ def inverse_distances(points, retained, k=10):
     return target, threshold
 
 
-def graph_rotation(folder, root):
-    """Return the raw -> canonical row-vector rotation, matching decode.py."""
+def graph_rotation(folder, root, stem_axis=TRAINING_STEM_AXIS):
+    """Return the raw -> training-frame row-vector rotation.
+
+    ``stem_axis="z"`` stops at decode.py's canonical frame; the default carries on
+    to the +X frame the network is trained and used in.
+    """
     state = torch.load(folder / "graph.pkl", map_location="cpu", weights_only=True)
     q = np.asarray(state[f"M_quat_{root}"], dtype=np.float64).reshape(4)
     if not np.isfinite(q).all() or np.linalg.norm(q) == 0:
         raise ValueError(f"{folder}: invalid main-stem quaternion")
     # Demeter stores w,x,y,z; scipy takes x,y,z,w. Its matrix is the
     # column-vector raw->canonical matrix used by decode.raw_to_canonical_transform.
-    return Rotation.from_quat(q[[1, 2, 3, 0]]).as_matrix().T
+    rotation = Rotation.from_quat(q[[1, 2, 3, 0]]).as_matrix().T
+    if stem_axis == TRAINING_STEM_AXIS:
+        return rotation @ canonical_to_training()
+    if stem_axis != CANONICAL_STEM_AXIS:
+        raise ValueError(f"stem_axis must be x or z, got {stem_axis!r}")
+    return rotation
 
 
-def prepare_sample(folder, alignment="graph", keep_black=False):
+def prepare_sample(folder, alignment="graph", keep_black=False,
+                   stem_axis=TRAINING_STEM_AXIS):
     import open3d as o3d
 
     classes, root = read_annotations(folder)
@@ -105,7 +119,8 @@ def prepare_sample(folder, alignment="graph", keep_black=False):
         raise ValueError(f"{folder}: invalid normalization radius")
     xyz = np.concatenate(list(retained.values()))
     center = xyz.mean(axis=0)
-    rotation = graph_rotation(folder, root) if alignment == "graph" else np.eye(3)
+    rotation = (graph_rotation(folder, root, stem_axis) if alignment == "graph"
+                else np.eye(3))
     coord = ((xyz - center) @ rotation / radius).astype(np.float32)
     cloud = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(coord))
     cloud.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
@@ -114,6 +129,8 @@ def prepare_sample(folder, alignment="graph", keep_black=False):
         np.full(len(p), 2 if key == root else CLASS_MAP[classes[key]], dtype=np.int64)
         for key, p in retained.items()
     ])
+    if alignment == "graph":
+        check_stem_axis(folder, coord, semantic == MAIN_STEM_CLASS, stem_axis)
     # Keep the archived RGB convention (0..1) for checkpoint compatibility.
     arrays = dict(coord=coord, color=np.concatenate(list(colors.values())).astype(np.float32),
                   normal=np.asarray(cloud.normals).astype(np.float32),
@@ -169,8 +186,8 @@ def select_splits(names, test_fraction, seed, split_file=None):
     return make_splits(names, 0.15 if test_fraction is None else test_fraction, seed)
 
 
-def write_sample(source, output, split, name, alignment, keep_black):
-    sample, info = prepare_sample(source / name, alignment, keep_black)
+def write_sample(source, output, split, name, alignment, keep_black, stem_axis):
+    sample, info = prepare_sample(source / name, alignment, keep_black, stem_axis)
     path = output / split / f"{name}.pth"
     temporary = path.with_suffix(".pth.tmp")
     torch.save(sample, temporary)
@@ -197,6 +214,9 @@ def main():
     parser.add_argument("--alignment", choices=("graph", "none"), default="graph",
                         help="Use the fitted main-stem rotation; none is only for already aligned scans")
     parser.add_argument("--keep-black", action="store_true", help="Keep black points (changes legacy targets)")
+    parser.add_argument("--stem-axis", choices=("x", "z"), default="x",
+                        help="Axis the main stem is aligned to; x matches the released "
+                             "checkpoint, normalize_data.py and the augmentation in config.py")
     parser.add_argument("--jobs", type=int, default=1, help="Number of CPU preprocessing processes")
     parser.add_argument("--resume", action="store_true", help="Continue a matching incomplete manifest")
     args = parser.parse_args()
@@ -219,10 +239,12 @@ def main():
         if args.jobs < 1:
             raise ValueError("--jobs must be positive")
         settings = dict(source=str(args.source.resolve()), splits=splits, seed=args.seed,
-                        alignment=args.alignment, keep_black=args.keep_black)
+                        alignment=args.alignment, keep_black=args.keep_black,
+                        stem_axis=args.stem_axis)
         manifest = dict(version=2, status="in_progress", settings=settings, seed=args.seed,
                         splits=splits, samples={}, class_names=CLASS_NAMES, class_map=CLASS_MAP,
                         keep_black=args.keep_black, color_range=[0, 1],
+                        stem_axis=args.stem_axis,
                         inv_dist_formula="T / max(d, T)",
                         threshold="2 * mean(max(within-instance KNN(k=10, including self)))")
         if args.resume:
@@ -240,7 +262,8 @@ def main():
             (args.output / split).mkdir(exist_ok=True)
             for name in sample_names:
                 if name not in manifest["samples"]:
-                    tasks.append((args.source, args.output, split, name, args.alignment, args.keep_black))
+                    tasks.append((args.source, args.output, split, name, args.alignment,
+                                  args.keep_black, args.stem_axis))
         save_manifest(args.output, manifest)
 
         def record(result):

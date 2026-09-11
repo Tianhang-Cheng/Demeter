@@ -14,9 +14,10 @@ import sys
 REPO = Path(__file__).resolve().parents[1]
 POINTCEPT = REPO / "third_party/PointTransformer_V3/Pointcept"
 CONFIGS = {"released": Path(__file__).with_name("config.py"),
-           "fixed": Path(__file__).with_name("config_fixed.py")}
-# Each recipe orients its plants differently, so its test-time rotations differ.
-TTA_AXIS = {"released": "x", "fixed": "z"}
+           "fixed": Path(__file__).with_name("config_fixed.py"),
+           "offset": Path(__file__).with_name("config_offset.py")}
+# Every recipe trains on +X-aligned plants, so test-time rotation is about x.
+TTA_AXIS = {"released": "x", "fixed": "x", "offset": "x"}
 
 
 def pointcept_command(mode, options, gpus, config):
@@ -87,6 +88,8 @@ def stage_inference(sample_path, output):
     import open3d as o3d
     import torch
 
+    from utils.frames import load_transform, save_transform, to_scan_frame
+
     # Local inputs include legacy NumPy-based .pth files from the released repo.
     sample = torch.load(sample_path, map_location="cpu", weights_only=False)
     arrays = {}
@@ -98,33 +101,20 @@ def stage_inference(sample_path, output):
     coord = arrays["coord"]
     if len(coord) == 0 or any(len(v) != len(coord) for v in arrays.values()):
         raise ValueError("Input arrays must have the same nonzero point count")
-    manifest_path = sample_path.parent.parent / "manifest.json"
-    if manifest_path.is_file():
-        info = json.loads(manifest_path.read_text())["samples"][sample_path.stem]
-        transform = {k: info[k] for k in ("rotation", "bbox_center", "radius", "normalize_divisor")}
-        transform["rotation"] = np.asarray(transform["rotation"])
-        transform["bbox_center"] = np.asarray(transform["bbox_center"])
-    elif (sample_path.parent / "transform.pkl").is_file():
-        with (sample_path.parent / "transform.pkl").open("rb") as f:
-            transform = pickle.load(f)
-    else:
-        raise FileNotFoundError("Need the generated manifest.json or a transform.pkl beside the normalized sample")
+    transform = load_transform(sample_path.parent, sample_path.stem)
     output.mkdir(parents=True, exist_ok=True)
     staged = {k: torch.as_tensor(v.copy()).float() for k, v in arrays.items()}
     staged["scene_id"] = sample_path.stem
     # Ground-truth labels are deliberately omitted from the reconstruction input.
     torch.save(staged, output / "normalized_pcd.pth")
-    with (output / "transform.pkl").open("wb") as f:
-        pickle.dump(transform, f)
+    save_transform(output, transform)
     click_path = sample_path.parent / "rotation_click.txt"
     if click_path.is_file():
         shutil.copy2(click_path, output / click_path.name)
     cloud = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(coord))
     cloud.colors = o3d.utility.Vector3dVector(arrays["color"])
     o3d.io.write_point_cloud(str(output / "pcd_unit_radius.ply"), cloud)
-    divisor = transform.get("normalize_divisor", transform["radius"])
-    cloud.points = o3d.utility.Vector3dVector(
-        (coord * divisor) @ np.asarray(transform["rotation"]).T + transform["bbox_center"])
+    cloud.points = o3d.utility.Vector3dVector(to_scan_frame(coord, transform))
     o3d.io.write_point_cloud(str(output / "pcd.ply"), cloud)
 
 
@@ -139,7 +129,7 @@ def main():
         p.add_argument("--workers", type=int, default=4)
         p.add_argument("--dry-run", action="store_true", help="Validate paths and print commands without writing/running")
         p.add_argument("--recipe", choices=tuple(CONFIGS), default="released",
-                       help="released reproduces the published config; fixed corrects colour units, rotation axis and the boundary loss")
+                       help="released reproduces the published config; fixed corrects the colour units and the boundary loss")
         p.add_argument("--tta", choices=("full", "rot4", "single"), default="full",
                        help="Test-time augmentation: full=13 views (released recipe), rot4=4, single=1")
         if name != "infer":

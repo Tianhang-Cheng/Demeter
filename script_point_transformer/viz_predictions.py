@@ -17,6 +17,8 @@ import numpy as np
 import open3d as o3d
 import torch
 
+from utils.instances import boundary_threshold, group_organs
+
 
 REPO = Path(__file__).resolve().parents[1]
 CLASS_NAMES = ["leaf", "other_stem", "main_stem", "flower", "fruit"]
@@ -78,102 +80,15 @@ def render(coord, colors, width, height, point_size, azimuths, elevation):
     return images
 
 
-# Instance clustering, matching script_auto_reconstruction/recon.py for soybean:
-# drop the points the boundary head calls a junction, then cluster the rest with
-# DBSCAN at a radius derived from the cloud's own point spacing.
-BOUNDARY_KEEP = 0.15
-DBSCAN_EPS_SCALE = 0.9
-DBSCAN_MIN_SAMPLES = 8
+def instance_labels(coord, pred_dist, pred_semantic, mode="graph-cut"):
+    """Organ labels from the shared grouping in utils/instances.py.
 
-
-def instance_labels(coord, pred_dist, pred_semantic, mode="spacing",
-                    grid=0.004, eps=0.012):
-    """Group points into organ instances; -1 marks points left unassigned.
-
-    ``spacing`` reproduces recon.py: delete the points the boundary head scores
-    above the threshold, then DBSCAN the rest at a radius taken from the cloud's own
-    point spacing. Preprocessing already normalises every plant to unit radius, so
-    that ties the radius to point density rather than organ size -- point count
-    spans 77x across the 78 released plants while plant size spans 1.7x, and dense
-    scans get a small radius and split their organs.
-
-    ``fixed`` removes the density dependence: voxelise to a fixed grid, then cluster
-    each predicted semantic class at a fixed radius. On the held-out plants this
-    corrects the organ count (1.7x -> 1.0x) without improving IoU.
-
-    ``graph-cut`` drops the deletion step, which is what caps the others: it builds a
-    kNN graph over voxels and cuts edges that straddle a predicted junction or a
-    class change, so every point keeps an organ. It assigns 87% of points rather
-    than 74% and scores the best of the three, but a third of annotated organs still
-    come out below 0.25 IoU, so the remaining error is not the clustering's to fix.
+    Kept in one place so the reconstruction and this report cannot drift apart:
+    recon.py fits its Demeter graph to exactly these organs.
     """
-    from scipy.spatial import cKDTree
-    from scipy.sparse import coo_matrix
-    from scipy.sparse.csgraph import connected_components
-    from sklearn.cluster import DBSCAN
-
-    if mode == "graph-cut":
-        return graph_cut_labels(coord, pred_dist, pred_semantic, grid)
-    keep = pred_dist < BOUNDARY_KEEP
-    labels = np.full(len(coord), -1, dtype=np.int64)
-    if not keep.any():
-        return labels, keep, 0.0
-    if mode == "spacing":
-        # T = 2 * mean over points of the 10th-nearest-neighbour distance.
-        neighbours, _ = cKDTree(coord).query(coord, k=10, workers=-1)
-        radius = float(np.nan_to_num(neighbours, posinf=0.0).max(axis=-1).mean() * 2
-                       * DBSCAN_EPS_SCALE)
-        labels[keep] = DBSCAN(eps=radius, min_samples=DBSCAN_MIN_SAMPLES,
-                              n_jobs=-1).fit_predict(coord[keep])
-        return labels, keep, radius
-
-    inside = coord[keep]
-    _, first, inverse = np.unique(np.floor(inside / grid).astype(np.int64), axis=0,
-                                  return_index=True, return_inverse=True)
-    centres, classes = inside[first], pred_semantic[keep][first]
-    voxel_labels = np.full(len(centres), -1, dtype=np.int64)
-    nxt = 0
-    for cls in np.unique(classes):
-        part = classes == cls
-        found = DBSCAN(eps=eps, min_samples=DBSCAN_MIN_SAMPLES,
-                       n_jobs=-1).fit_predict(centres[part])
-        voxel_labels[part] = np.where(found >= 0, found + nxt, -1)
-        if (found >= 0).any():
-            nxt += found.max() + 1
-    labels[keep] = voxel_labels[inverse]
-    return labels, keep, eps
-
-
-GRAPH_CUT_THRESHOLD = 0.25
-GRAPH_CUT_NEIGHBOURS = 16
-GRAPH_CUT_LINK = 3.0
-
-
-def graph_cut_labels(coord, pred_dist, pred_semantic, grid=0.004):
-    """Connected components of a kNN graph with junction and class edges removed."""
-    from scipy.spatial import cKDTree
-    from scipy.sparse import coo_matrix
-    from scipy.sparse.csgraph import connected_components
-
-    _, first, inverse = np.unique(np.floor(coord / grid).astype(np.int64), axis=0,
-                                  return_index=True, return_inverse=True)
-    centres, score, classes = coord[first], pred_dist[first], pred_semantic[first]
-    distance, index = cKDTree(centres).query(centres, k=GRAPH_CUT_NEIGHBOURS + 1, workers=-1)
-    src = np.repeat(np.arange(len(centres)), GRAPH_CUT_NEIGHBOURS)
-    dst = index[:, 1:].ravel()
-    edge = ((distance[:, 1:].ravel() < GRAPH_CUT_LINK * grid)
-            & (np.maximum(score[src], score[dst]) < GRAPH_CUT_THRESHOLD)
-            & (classes[src] == classes[dst]))
-    graph = coo_matrix((np.ones(edge.sum()), (src[edge], dst[edge])),
-                       shape=(len(centres),) * 2)
-    _, found = connected_components(graph, directed=False)
-    sizes = np.bincount(found)
-    found = np.where(sizes[found] >= DBSCAN_MIN_SAMPLES, found, -1)
-    ids = np.unique(found[found >= 0])
-    lookup = np.full(found.max() + 2, -1, dtype=np.int64)
-    lookup[ids] = np.arange(len(ids))
-    labels = lookup[found][inverse]
-    return labels, labels >= 0, float(GRAPH_CUT_THRESHOLD)
+    labels = group_organs(coord, pred_dist, pred_semantic, species="soybean",
+                          method=mode.replace("-", "_"))
+    return labels, labels >= 0, boundary_threshold("soybean")
 
 
 def instance_metrics(gt_instance, pred_instance, keep):
@@ -326,10 +241,6 @@ def main():
                         help="graph-cut assigns every point and scores best on the held-out "
                              "plants; spacing reproduces recon.py; fixed makes the DBSCAN "
                              "radius independent of point density")
-    parser.add_argument("--instance-grid", type=float, default=0.004,
-                        help="voxel size for --instance-eps fixed")
-    parser.add_argument("--instance-radius", type=float, default=0.012,
-                        help="DBSCAN radius for --instance-eps fixed")
     args = parser.parse_args()
 
     run = args.run.resolve()
@@ -357,8 +268,7 @@ def main():
         record = metrics(gt_semantic, pred_semantic, gt_dist, pred_dist, counts)
         gt_instance = sample["instance_gt"].numpy().reshape(-1)
         pred_instance, boundary_keep, threshold = instance_labels(
-            coord, pred_dist, pred_semantic, args.instance_eps,
-            args.instance_grid, args.instance_radius)
+            coord, pred_dist, pred_semantic, args.instance_eps)
         record.update(name=name, split=split, dbscan_threshold=threshold,
                       **instance_metrics(gt_instance, pred_instance, boundary_keep))
 

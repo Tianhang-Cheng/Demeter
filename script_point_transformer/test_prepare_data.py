@@ -12,7 +12,9 @@ import open3d as o3d
 from scipy.spatial.distance import cdist
 import torch
 
-from prepare_data import inverse_distances, make_splits, prepare_sample, select_splits
+from prepare_data import (graph_rotation, inverse_distances, make_splits,
+                          prepare_sample, select_splits)
+from utils.frames import CANONICAL_STEM_AXIS, canonical_to_training
 from run import stage_inference
 
 
@@ -95,8 +97,15 @@ class PreparationTests(unittest.TestCase):
             self.assertEqual(sample["coord"].shape, (115, 3))
             np.testing.assert_array_equal(sample["semantic_gt5"].numpy(), np.repeat([2, 0, 1, 3, 4], 23))
             np.testing.assert_array_equal(sample["instance_gt"].numpy(), np.repeat(range(5), 23))
+            # The stored quaternion still has to be applied with scipy's convention
+            # and the right transposition; that is the canonical layer.
+            canonical = graph_rotation(folder, 0, stem_axis=CANONICAL_STEM_AXIS)
+            np.testing.assert_allclose([0, -1, 0] @ canonical, [1, 0, 0], atol=1e-6)
+            # On top of it the default carries the canonical +Z onto the +X the
+            # network is trained and used in, which is what info["rotation"] holds.
+            np.testing.assert_allclose([0, 0, 1] @ canonical_to_training(), [1, 0, 0], atol=1e-6)
             rotation = np.asarray(info["rotation"])
-            np.testing.assert_allclose([0, -1, 0] @ rotation, [1, 0, 0], atol=1e-6)
+            np.testing.assert_allclose(rotation, canonical @ canonical_to_training(), atol=1e-6)
             restored = (sample["coord"].numpy() * info["radius"]) @ rotation.T + info["bbox_center"]
             np.testing.assert_allclose(restored, points, atol=1e-6)
             np.testing.assert_allclose(np.linalg.norm(sample["normal"], axis=1), 1, atol=1e-5)

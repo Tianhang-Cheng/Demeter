@@ -6,6 +6,7 @@ sys.path.append(os.path.dirname(script_dir))
 import numpy as np
 import matplotlib.pyplot as plt
 from utils.color_print import *
+from utils.frames import training_axis_vector
 import os
 import open3d as o3d
 import pickle
@@ -145,7 +146,8 @@ def process_data(path: str, no_scale: bool = False):
         vector = selected_coords[1] - selected_coords[0]
         vector = vector / np.linalg.norm(vector)
 
-        R = rotate_vector_to_target(vector)[-1]
+        # Same frame the training data is prepared in; see utils/frames.py.
+        R = rotate_vector_to_target(vector, training_axis_vector())[-1]
 
         rotated_coords = (points_all - points_all.mean(axis=0)) @ R.T
         pcd_new = o3d.geometry.PointCloud()

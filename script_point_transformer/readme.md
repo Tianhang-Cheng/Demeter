@@ -359,8 +359,12 @@ subsample (metrics always use every point), and `--width`, `--height`,
 ### Grouping points into organs
 
 The network predicts semantics and a boundary score, not instances; organs are
-grouped afterwards, so `--instance-eps` re-groups the same predictions three ways.
-Measured on the 11 held-out plants against 438 annotated organs:
+grouped afterwards by [`utils/instances.py`](../utils/instances.py), which
+`script_auto_reconstruction/recon.py` also calls — so the numbers below describe
+exactly the organs the reconstruction fits its graph to, and a change to the
+grouping reaches both. `--instance-eps` selects the method (`recon.py` takes the
+same choice as `--instance-method`). Measured on the 11 held-out plants against
+438 annotated organs:
 
 | `--instance-eps` | organs | coverage | matched@0.5 | assigned |
 | --- | --- | --- | --- | --- |
@@ -388,8 +392,8 @@ seeding organs from the stem/petiole skeleton and growing geodesically scored *w
 (0.477), because organs being merged is already rare. Grouping is not where the
 remaining error is; a learned instance head is the change that would move it.
 
-`recon.py` still uses its own `spacing` clustering, so the reconstruction's meshes are
-unaffected by this default — only the report is.
+`recon.py` defaults to `spacing`, so reconstruction output is unchanged until you pass
+`--instance-method graph_cut`; only this report defaults to the better one.
 
 ## Verification
 
