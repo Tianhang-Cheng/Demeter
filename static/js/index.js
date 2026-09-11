@@ -39,7 +39,7 @@ var speciesConfig3DStem = {
 };
 
 function updateSpeciesImage(species) {
-  var imgPath = './static/images/' + species + '.jpg';
+  var imgPath = './static/images/' + species + '.webp';
   var $img = $('#species-image');
   if ($img.length) {
     $img.attr('src', imgPath);
@@ -72,7 +72,7 @@ var pca_images_3d_stem = {
 
 function preloadInterpolationImages() {
   for (var i = 0; i < NUM_INTERP_FRAMES; i++) {
-    var path = INTERP_BASE + '/' + String(i).padStart(6, '0') + '.jpg';
+    var path = INTERP_BASE + '/' + String(i).padStart(6, '0') + '.webp';
     interp_images[i] = new Image();
     interp_images[i].src = path;
   }
@@ -83,7 +83,7 @@ function preloadPCAImagesForSpecies(species) {
   for (var component = 1; component <= 4; component++) {
     pca_images[component] = [];
     for (var i = 0; i < NUM_INTERP_FRAMES; i++) {
-      var path = base + '/pca' + component + '/' + String(i).padStart(6, '0') + '.jpg';
+      var path = base + '/pca' + component + '/' + String(i).padStart(6, '0') + '.webp';
       pca_images[component][i] = new Image();
       pca_images[component][i].src = path;
     }
@@ -95,7 +95,7 @@ function preloadPCAImagesForSpecies3DLeaf(species) {
   for (var component = 1; component <= 4; component++) {
     pca_images_3d_leaf[component] = [];
     for (var i = 0; i < NUM_INTERP_FRAMES; i++) {
-      var path = base + '/pca' + component + '/' + String(i).padStart(6, '0') + '.jpg';
+      var path = base + '/pca' + component + '/' + String(i).padStart(6, '0') + '.webp';
       pca_images_3d_leaf[component][i] = new Image();
       pca_images_3d_leaf[component][i].src = path;
       // Handle error if image doesn't exist
@@ -115,7 +115,7 @@ function preloadPCAImagesForSpecies3DStem(species) {
   for (var component = 1; component <= 4; component++) {
     pca_images_3d_stem[component] = [];
     for (var i = 0; i < NUM_INTERP_FRAMES; i++) {
-      var path = base + '/pca' + component + '/' + String(i).padStart(6, '0') + '.jpg';
+      var path = base + '/pca' + component + '/' + String(i).padStart(6, '0') + '.webp';
       pca_images_3d_stem[component][i] = new Image();
       pca_images_3d_stem[component][i].src = path;
       // Handle error if image doesn't exist
@@ -312,7 +312,7 @@ function animate3D(componentNum) {
 }
 
 function updateSpeciesImage3D(species) {
-  var imgPath = './static/images/' + species + '.jpg';
+  var imgPath = './static/images/' + species + '.webp';
   var $img = $('#species-image-3d');
   if ($img.length) {
     $img.attr('src', imgPath);
@@ -321,7 +321,7 @@ function updateSpeciesImage3D(species) {
 }
 
 function updateSpeciesImage3DLeaf(species) {
-  var imgPath = './static/images/' + species + '.jpg';
+  var imgPath = './static/images/' + species + '.webp';
   var $img = $('#species-image-3d-leaf');
   if ($img.length) {
     $img.attr('src', imgPath);
@@ -330,7 +330,7 @@ function updateSpeciesImage3DLeaf(species) {
 }
 
 function updateSpeciesImage3DStem(species) {
-  var imgPath = './static/images/' + species + '.jpg';
+  var imgPath = './static/images/' + species + '.webp';
   var $img = $('#species-image-3d-stem');
   if ($img.length) {
     $img.attr('src', imgPath);
@@ -560,11 +560,11 @@ var overviewState = {
 };
 
 function initOverviewViewer() {
-  // Generate image list from 0.jpg to 59.jpg
+  // Generate image list from 0.webp to 59.webp
   overviewState.images = [];
   for (var i = 0; i < 60; i++) {
     overviewState.images.push({
-      src: './static/overview/' + i + '.jpg',
+      src: './static/overview/' + i + '.webp',
       index: i
     });
   }
@@ -1059,7 +1059,7 @@ function soyfitBasePath() {
 
 function updateSoyfitImage() {
   var img = document.getElementById('soyfit-image');
-  if (img) img.src = soyfitBasePath() + 'image.jpg';
+  if (img) img.src = soyfitBasePath() + 'image.webp';
 }
 
 function createBasicViewer(containerId) {
