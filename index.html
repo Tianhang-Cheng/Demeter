@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="description"
+        content="Deformable Neural Radiance Fields creates free-viewpoint portraits (nerfies) from casually captured videos.">
+  <meta name="keywords" content="Nerfies, D-NeRF, NeRF">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Demeter: A Parametric Model of Crop Plant Morphology from the Real World</title>
+
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-PYVRSFMDRL"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+
+    function gtag() {
+      dataLayer.push(arguments);
+    }
+
+    gtag('js', new Date());
+
+    gtag('config', 'G-PYVRSFMDRL');
+  </script>
+
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro"
+        rel="stylesheet">
+
+  <link rel="stylesheet" href="./static/css/bulma.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-carousel.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-slider.min.css">
+  <link rel="stylesheet" href="./static/css/fontawesome.all.min.css">
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link rel="stylesheet" href="./static/css/index.css">
+  <link rel="icon" href="./static/images/plant.svg">
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script defer src="./static/js/fontawesome.all.min.js"></script>
+  <script src="./static/js/bulma-carousel.min.js"></script>
+  <script src="./static/js/bulma-slider.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/PLYLoader.js"></script>
+  <script src="./static/js/index.js"></script>
+</head>
+<body>
+
+<!-- <nav class="navbar" role="navigation" aria-label="main navigation">
+  <div class="navbar-brand">
+    <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false">
+      <span aria-hidden="true"></span>
+      <span aria-hidden="true"></span>
+      <span aria-hidden="true"></span>
+    </a>
+  </div>
+  <div class="navbar-menu">
+    <div class="navbar-start" style="flex-grow: 1; justify-content: center;">
+      <a class="navbar-item" href="https://keunhong.com">
+      <span class="icon">
+          <i class="fas fa-home"></i>
+      </span>
+      </a>
+
+      <div class="navbar-item has-dropdown is-hoverable">
+        <a class="navbar-link">
+          More Research
+        </a>
+        <div class="navbar-dropdown">
+          <a class="navbar-item" href="https://hypernerf.github.io">
+            HyperNeRF
+          </a>
+          <a class="navbar-item" href="https://nerfies.github.io">
+            Nerfies
+          </a>
+          <a class="navbar-item" href="https://latentfusion.github.io">
+            LatentFusion
+          </a>
+          <a class="navbar-item" href="https://photoshape.github.io">
+            PhotoShape
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</nav> -->
+
+
+<section class="hero">
+  <div class="hero-body">
+    <div class="container is-max-widescreen">
+      <div class="columns is-centered">
+        <div class="column has-text-centered">
+          <h1 class="title is-1 publication-title">Demeter: A Parametric Model of Plant Morphology from the Real World</h1>
+          <br>
+          <h2 class="subtitle is-3 publication-subtitle">ICCV 2025</h2>
+          <div class="is-size-5 publication-authors">
+            <span class="author-block">
+              <a href="https://tianhang-cheng.github.io/">Tianhang Cheng</a>,</span>
+            <span class="author-block">
+              <a href="https://ajzhai.github.io/">Albert J. Zhai</a>,
+            </span>
+            <span class="author-block">
+              <a href="https://zuyouchen.github.io/">Evan Z. Chen</a>,
+            </span>
+            <span class="author-block">
+              <a href="https://www.linkedin.com/in/rui-zhou-146140258/">Rui Zhou</a>,
+            </span>
+            <span class="author-block">
+              Yawen Deng,
+            </span>
+            <span class="author-block">
+              Zitong Li,
+            </span>
+            <span class="author-block">
+              Kejie Zhao,
+            </span>
+            <span class="author-block">
+              Janice Shiu,
+            </span>
+            <span class="author-block">
+              Qianyu Zhao,
+            </span>
+            <span class="author-block">
+              Yide Xu,
+            </span>
+            <span class="author-block">
+              Xinlei Wang,
+            </span>
+            <span class="author-block">
+              <a href="https://yshen47.github.io/">Yuan Shen</a>,
+            </span>
+            <span class="author-block">
+              <a href="https://shengwang12.github.io/">Sheng Wang</a>,
+            </span>
+            <span class="author-block">
+              <a href="https://cropsciences.illinois.edu/directory/ainswort">Lisa Ainsworth</a>,
+            </span>
+            <span class="author-block">
+              <a href="http://faculty.nres.illinois.edu/~kaiyuguan/">Kaiyu Guan</a>,
+            </span>
+            <span class="author-block">
+              <a href="https://shenlong.web.illinois.edu/">Shenlong Wang</a>
+            </span>
+          </div>
+
+          <div class="is-size-5 publication-authors">
+            <span class="author-block">University of Illinois at Urbana-Champaign</span>
+            
+          </div>
+
+          <div class="column has-text-centered">
+            <div class="publication-links">
+              <!-- PDF Link. -->
+              <span class="link-block">
+                <a href="./static/papers/paper.pdf"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="fas fa-file-pdf"></i>
+                  </span>
+                  <span>Paper</span>
+                </a>
+              </span>
+              <!-- <span class="link-block">
+                <a href=""
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="ai ai-arxiv"></i>
+                  </span>
+                  <span>arXiv (Coming Soon)</span>
+                </a>
+              </span> -->
+              <!-- Video Link. -->
+              <!-- <span class="link-block">
+                <a href=""
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="fab fa-youtube"></i>
+                  </span>
+                  <span>Video (Coming Soon)</span>
+                </a>
+              </span> -->
+              <!-- Code Link. -->
+              <span class="link-block">
+                <a href="https://github.com/Tianhang-Cheng/Demeter"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="fab fa-github"></i>
+                  </span>
+                  <span>Code </span>
+                  </a>
+              </span>
+              <!-- Dataset Link. -->
+              <span class="link-block">
+                <a href="https://drive.google.com/file/d/1OLa7JXfgj3QGRKKB0nxhRyndsH_peiaY/view?usp=drive_link"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="far fa-images"></i>
+                  </span>
+                  <span>Raw Data</span>
+                  </a>
+              </span>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="hero teaser">
+  <div class="container is-max-desktop">
+    <div class="hero-body">
+      <img id="teaser" src="./static/images/teaser.png" alt="Teaser" style="width: 100%; height: auto;">
+      <h2 class="subtitle has-text-centered">
+        <span class="dnerf">Demeter</span> is a plant parametric models that is learned from 3D scans of real-world plants. It explicitly models the stem and leaf of a plant.
+      </h2>
+    </div>
+  </div>
+</section>
+
+
+
+
+<section class="section">
+  <div class="container is-max-desktop">
+    <!-- Abstract. -->
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">Abstract</h2>
+        <div class="content has-text-justified">
+          <p>
+            Learning 3D parametric shape models of objects has gained popularity in vision and graphics 
+            and has showed broad utility in 3D reconstruction, generation, understanding, and simulation. 
+            While powerful models exist for humans and animals, equally expressive approaches for modeling plants are lacking.
+          </p>
+          <p>
+            In this work, we present <i>Demeter</i>, a data-driven parametric model that encodes key factors of a plant morphology,
+             including topology, shape, articulation, and deformation into a compact learned representation. 
+             Unlike previous parametric models, Demeter handles varying shape topology across various species and models three sources of shape variation: 
+             articulation, subcomponent shape variation, and non-rigid deformation. 
+          </p>
+          <p>
+            To advance crop plant modeling, we collected a large-scale, ground-truthed dataset from a soybean farm as a testbed. 
+            Experiments show that Demeter effectively synthesizes shapes, reconstructs structures, 
+            and simulates biophysical processes. 
+          </p>
+        </div>
+      </div>
+    </div>
+    <!--/ Abstract. -->
+
+    <!-- Paper video. -->
+    <!-- <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">Video</h2>
+        <div class="publication-video">
+          <iframe src="https://www.youtube.com/embed/MrKrnHhk8IA?rel=0&amp;showinfo=0"
+                  frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+        </div>
+      </div>
+    </div> -->
+    <!--/ Paper video. -->
+  </div>
+</section>
+
+
+<section class="section">
+  <div class="container is-max-desktop">
+
+    <div class="columns is-centered">
+
+      <!-- Overview. -->
+      <div class="column is-full-width">
+        <h2 class="title is-3">Overview</h2>
+
+        <img src="./static/images/params.png" alt="Parameters" style="max-width: 100%; height: auto;">
+
+        
+
+        <div class="content has-text-justified">
+          <style>
+            .box {
+              display: inline-block;
+              padding: 2px 6px;
+              border-radius: 4px;
+              color: white;          /* text color */
+              font-weight: bold;
+            }
+            .root { background-color: gray; }
+            .stem { background-color: rgb(53, 158, 194); color: rgb(255, 255, 255); } /* black text for contrast */
+            .leaf { background-color: rgb(32, 159, 32); }
+          </style>
+          <p>
+            The Demeter Model learns four parametric components from real-world data: 
+            (a) topology Γ, a tree-structured graph that stores the binary connection relationship from human annotations;
+            (b) articulation parameters θ defining each node’s relative position to its parent, using quaternions for rotation and 1D translation; 
+            (c) shape parameter β, representing leaf variance via principal component coefficients, learned from 2D leaf scans; 
+            (d) deformation parameter γ, which learned from 3D leaf point cloud and fixed 2D shape parameter β, controls the skeletons of leaf and stem. 
+            Here the 
+              <span class="box root">gray</span>, 
+              <span class="box stem">blue</span> and 
+              <span class="box leaf">green</span> node represents root, stem and leaf respectively.
+          </p>
+        </div>
+
+        <!-- Overview Image Carousel -->
+        <div class="overview-panel">
+          <div class="overview-container">
+            <!-- Left Navigation Button -->
+            <button class="overview-nav-btn overview-nav-left" id="overview-prev-btn">
+              <span class="icon">
+                <i class="fas fa-chevron-left"></i>
+              </span>
+            </button>
+            
+            <!-- Image Display -->
+            <div class="overview-image-container">
+              <img id="overview-image" alt="Overview Image" class="overview-image"/>
+              <div class="overview-image-info">
+                <span id="overview-counter">1 / 60</span>
+                <button class="overview-play-btn" id="overview-play-btn" title="Play/Pause automatic slideshow">
+                  <span class="icon">
+                    <i class="fas fa-pause" id="overview-play-icon"></i>
+                  </span>
+                </button>
+              </div>
+            </div>
+            
+            <!-- Right Navigation Button -->
+            <button class="overview-nav-btn overview-nav-right" id="overview-next-btn">
+              <span class="icon">
+                <i class="fas fa-chevron-right"></i>
+              </span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <!--/ Overview. -->
+
+    <!-- Soybean Fitting Results -->
+    <div class="columns is-centered">
+      <div class="column is-full-width">
+
+
+        <h2 class="title is-3">Raw Data From Monocular Video</h2>
+        <div class="content has-text-justified">
+          <p>
+            We reconstruct a 3D soybean mesh dataset with ~600 samples from monocular video.
+          </p>
+        </div>
+        <!-- Soybean Gallery -->
+        <div class="soybean-gallery">
+          <div class="columns is-vcentered">
+            <div class="column is-full has-text-centered">
+              <img id="soybean-image" src="./static/dataset_row.png" alt="Soybean", style="width: 80%; height: auto;"/>
+              <p class="has-text-centered" style="margin-top: 1rem; font-size: 0.9rem; color: #666;"> </p>
+            </div>
+          </div>
+        </div>
+        <!--/ Soybean Gallery -->
+
+        <br/><br/>
+
+        <h2 class="title is-3">3D Representation for Crop Plants</h2>
+        
+        <!-- Soybean Gallery -->
+        <div class="soybean-gallery">
+          <div class="columns is-vcentered">
+            <div class="column is-full has-text-centered">
+              <img id="soybean-image" src="./static/fitting_3d/static.png" alt="Soybean", style="width: 80%; height: auto;"/>
+              <p class="has-text-centered" style="margin-top: 1rem; font-size: 0.9rem; color: #666;">
+                This image shows the 3D fitting results for soybean plants, demonstrating our parametric model's ability to accurately reconstruct plant geometry from input images.
+              </p>
+            </div>
+          </div>
+        </div>
+        <!--/ Soybean Gallery -->
+
+        <br/><br/>
+        
+        <div class="content has-text-justified">
+          <p>
+            Select plant sample to view the input image, ground-truth point cloud, and reconstructed mesh.
+          </p>
+        </div>
+
+        <!-- Selector Buttons -->
+        <div class="species-selector">
+          <div class="columns is-mobile is-centered">
+            <div class="column is-narrow">
+              <button class="button soybean-fit-btn is-light is-active" data-fit-id="1">Soybean 1</button>
+            </div>
+            <div class="column is-narrow">
+              <button class="button soybean-fit-btn is-light" data-fit-id="2">Soybean 2</button>
+            </div>
+            <div class="column is-narrow">
+              <button class="button soybean-fit-btn is-light" data-fit-id="3">Soybean 3</button>
+            </div>
+            <div class="column is-narrow">
+              <button class="button soybean-fit-btn is-light" data-fit-id="4">Soybean 4</button>
+            </div>
+            <div class="column is-narrow">
+              <button class="button soybean-fit-btn is-light" data-fit-id="5">Soybean 5</button>
+            </div>
+            <div class="column is-narrow">
+              <button class="button soybean-fit-btn is-light" data-fit-id="6">Soybean 6</button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Ribes Selector Buttons -->
+        <div class="species-selector" style="margin-top: 1rem;">
+          <div class="columns is-mobile is-centered">
+            <div class="column is-narrow">
+              <button class="button ribes-fit-btn is-light" data-fit-id="1">Ribes 1</button>
+            </div>
+            <div class="column is-narrow">
+              <button class="button ribes-fit-btn is-light" data-fit-id="2">Ribes 2</button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Maize Selector Buttons -->
+        <div class="species-selector" style="margin-top: 1rem;">
+          <div class="columns is-mobile is-centered">
+            <div class="column is-narrow">
+              <button class="button maize-fit-btn is-light" data-fit-id="1">Maize 1</button>
+            </div>
+            <div class="column is-narrow">
+              <button class="button maize-fit-btn is-light" data-fit-id="2">Maize 2</button>
+            </div>
+            <div class="column is-narrow">
+              <button class="button maize-fit-btn is-light" data-fit-id="3">Maize 3</button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Tobacco Selector Buttons -->
+        <div class="species-selector" style="margin-top: 1rem;">
+          <div class="columns is-mobile is-centered">
+            <div class="column is-narrow">
+              <button class="button tobacco-fit-btn is-light" data-fit-id="1">Tobacco 1</button>
+            </div>
+            <div class="column is-narrow">
+              <button class="button tobacco-fit-btn is-light" data-fit-id="2">Tobacco 2</button>
+            </div>
+            <div class="column is-narrow">
+              <button class="button tobacco-fit-btn is-light" data-fit-id="3">Tobacco 3</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Three Panels: Image | Point Cloud | Mesh -->
+        <div class="soybean-fitting-panel">
+          <div class="columns is-vcentered">
+            <!-- Input Image -->
+            <div class="column">
+              <h4 class="title is-6 has-text-centered">Input Images</h4>
+              <div class="fit-card">
+                <img id="soyfit-image" alt="Soybean Input"/>
+              </div>
+            </div>
+
+            <!-- Point Cloud Viewer -->
+            <div class="column">
+              <h4 class="title is-6 has-text-centered">Point Cloud</h4>
+              <div class="fit-card">
+                <div class="fit-viewer" id="soyfit-pcd-viewer">
+                  <div class="viewer-loading">Loading point cloud...</div>
+                </div>
+                <p class="has-text-centered fit-help"><small>Drag to rotate • Scroll to zoom</small></p>
+              </div>
+            </div>
+
+            <!-- Mesh Viewer -->
+            <div class="column">
+              <h4 class="title is-6 has-text-centered">Parametric Mesh</h4>
+              <div class="fit-card">
+                <div class="fit-viewer" id="soyfit-mesh-viewer">
+                  <div class="viewer-loading">Loading mesh...</div>
+                </div>
+                <p class="has-text-centered fit-help"><small>Drag to rotate • Scroll to zoom</small></p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+
+
+      </div>
+    </div>
+    <!--/ Soybean Fitting Results -->
+
+
+    <!-- Learning From Real World Data. -->
+    <div class="columns is-centered">
+      <div class="column is-full-width">
+        <h2 class="title is-3">Learning From Real World Data</h2>
+
+        <!-- Interpolating 2D PCA components. -->
+        <h3 class="title is-4">2D Leaf Shape</h3>
+        <div class="content has-text-justified">
+          <p>
+            We extract PCA components from the 2D leaf scannings for each species, and show the first 4 components, ranging from (-2σ, 2σ).
+          </p>
+        </div>
+        <!-- Species Selector -->
+        <div class="species-selector">
+          <div class="columns is-mobile is-centered">
+            <div class="column is-narrow">
+              <button class="button species-box is-light is-active" data-species="Papaya">
+                Papaya
+              </button>
+            </div>
+            <div class="column is-narrow">
+              <button class="button species-box is-light" data-species="Soybean">
+                Soybean
+              </button>
+            </div>
+            <div class="column is-narrow">
+              <button class="button species-box is-light" data-species="Geranium">
+                Geranium
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="interpolation-panel">
+          <div class="columns is-vcentered">
+            <div class="column is-3 has-text-centered">
+              <img id="species-image" src="./static/images/Papaya.jpg"
+                   class="interpolation-image"
+                   alt="Papaya"/>
+              <p id="species-label">Papaya</p>
+            </div>
+            <div class="column is-9">
+              <div class="pca-sliders-grid">
+                <!-- PCA Component 1 -->
+                <div class="pca-slider-container">
+                  <h4 class="title is-6 has-text-centered">PCA Component 1</h4>
+                  <div id="pca1-image-wrapper" class="pca-image-wrapper">
+                    Loading...
+                  </div>
+                  <input class="slider is-fullwidth is-large is-info"
+                         id="pca1-slider"
+                         step="1" min="0" max="100" value="0" type="range">
+                </div>
+                
+                <!-- PCA Component 2 -->
+                <div class="pca-slider-container">
+                  <h4 class="title is-6 has-text-centered">PCA Component 2</h4>
+                  <div id="pca2-image-wrapper" class="pca-image-wrapper">
+                    Loading...
+                  </div>
+                  <input class="slider is-fullwidth is-large is-info"
+                         id="pca2-slider"
+                         step="1" min="0" max="100" value="0" type="range">
+                </div>
+                
+                <!-- PCA Component 3 -->
+                <div class="pca-slider-container">
+                  <h4 class="title is-6 has-text-centered">PCA Component 3</h4>
+                  <div id="pca3-image-wrapper" class="pca-image-wrapper">
+                    Loading...
+                  </div>
+                  <input class="slider is-fullwidth is-large is-info"
+                         id="pca3-slider"
+                         step="1" min="0" max="100" value="0" type="range">
+                </div>
+                
+                <!-- PCA Component 4 -->
+                <div class="pca-slider-container">
+                  <h4 class="title is-6 has-text-centered">PCA Component 4</h4>
+                  <div id="pca4-image-wrapper" class="pca-image-wrapper">
+                    Loading...
+                  </div>
+                  <input class="slider is-fullwidth is-large is-info"
+                         id="pca4-slider"
+                         step="1" min="0" max="100" value="0" type="range">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <br/>
+        <!--/ Interpolating. -->
+
+        <!-- Interpolating 3D Leaf PCA components. -->
+        <h3 class="title is-4">3D Leaf Shape</h3>
+        <div class="content has-text-justified">
+          <p>
+            We extract PCA components from the 3D leaf models for each species, and show the first 4 components, ranging from (-2σ, 2σ).
+          </p>
+        </div>
+        <!-- Species Selector for 3D Leaf -->
+        <div class="species-selector">
+          <div class="columns is-mobile is-centered">
+            <div class="column is-narrow">
+              <button class="button species-box-3d-leaf is-light is-active" data-species="Papaya">
+                Papaya
+              </button>
+            </div>
+            <div class="column is-narrow">
+              <button class="button species-box-3d-leaf is-light" data-species="Soybean">
+                Soybean
+              </button>
+            </div>
+            <div class="column is-narrow">
+              <button class="button species-box-3d-leaf is-light" data-species="Tobacco">
+                Tobacco
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="interpolation-panel-3d-leaf">
+          <div class="columns is-vcentered">
+            <div class="column is-3 has-text-centered">
+              <img id="species-image-3d-leaf" src="./static/images/Papaya.jpg"
+                   class="interpolation-image"
+                   alt="Papaya"/>
+              <p id="species-label-3d-leaf">Papaya</p>
+            </div>
+            <div class="column is-9">
+              <div class="pca-sliders-grid-3d-leaf">
+                <!-- PCA Component 1 -->
+                <div class="pca-slider-container-3d-leaf">
+                  <h4 class="title is-6 has-text-centered">PCA Component 1</h4>
+                  <div id="pca1-image-wrapper-3d-leaf" class="pca-image-wrapper-3d-leaf">
+                    Loading...
+                  </div>
+                  <input class="slider is-fullwidth is-large is-info"
+                         id="pca1-slider-3d-leaf"
+                         step="1" min="0" max="100" value="0" type="range">
+                </div>
+                
+                <!-- PCA Component 2 -->
+                <div class="pca-slider-container-3d-leaf">
+                  <h4 class="title is-6 has-text-centered">PCA Component 2</h4>
+                  <div id="pca2-image-wrapper-3d-leaf" class="pca-image-wrapper-3d-leaf">
+                    Loading...
+                  </div>
+                  <input class="slider is-fullwidth is-large is-info"
+                         id="pca2-slider-3d-leaf"
+                         step="1" min="0" max="100" value="0" type="range">
+                </div>
+                
+                <!-- PCA Component 3 -->
+                <div class="pca-slider-container-3d-leaf">
+                  <h4 class="title is-6 has-text-centered">PCA Component 3</h4>
+                  <div id="pca3-image-wrapper-3d-leaf" class="pca-image-wrapper-3d-leaf">
+                    Loading...
+                  </div>
+                  <input class="slider is-fullwidth is-large is-info"
+                         id="pca3-slider-3d-leaf"
+                         step="1" min="0" max="100" value="0" type="range">
+                </div>
+                
+                <!-- PCA Component 4 -->
+                <div class="pca-slider-container-3d-leaf">
+                  <h4 class="title is-6 has-text-centered">PCA Component 4</h4>
+                  <div id="pca4-image-wrapper-3d-leaf" class="pca-image-wrapper-3d-leaf">
+                    Loading...
+                  </div>
+                  <input class="slider is-fullwidth is-large is-info"
+                         id="pca4-slider-3d-leaf"
+                         step="1" min="0" max="100" value="0" type="range">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!--/ Interpolating 3D Leaf PCA components. -->
+
+        <br/><br/>
+
+        <!-- Interpolating 3D Stem PCA components. -->
+        <h3 class="title is-4">3D Stem Shape</h3>
+        <div class="content has-text-justified">
+          <p>
+            We extract PCA components from the 3D stem models for each species, and show the first 4 components, ranging from (-2σ, 2σ).
+          </p>
+        </div>
+        <!-- Species Selector for 3D Stem -->
+        <div class="species-selector">
+          <div class="columns is-mobile is-centered">
+            <div class="column is-narrow">
+              <button class="button species-box-3d-stem is-light is-active" data-species="Papaya">
+                Papaya
+              </button>
+            </div>
+            <div class="column is-narrow">
+              <button class="button species-box-3d-stem is-light" data-species="Soybean">
+                Soybean
+              </button>
+            </div>
+            <div class="column is-narrow">
+              <button class="button species-box-3d-stem is-light" data-species="Tobacco">
+                Tobacco
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="interpolation-panel-3d-stem">
+          <div class="columns is-vcentered">
+            <div class="column is-3 has-text-centered">
+              <img id="species-image-3d-stem" src="./static/images/Papaya.jpg"
+                   class="interpolation-image"
+                   alt="Papaya"/>
+              <p id="species-label-3d-stem">Papaya</p>
+            </div>
+            <div class="column is-9">
+              <div class="pca-sliders-grid-3d-stem">
+                <!-- PCA Component 1 -->
+                <div class="pca-slider-container-3d-stem">
+                  <h4 class="title is-6 has-text-centered">PCA Component 1</h4>
+                  <div id="pca1-image-wrapper-3d-stem" class="pca-image-wrapper-3d-stem">
+                    Loading...
+                  </div>
+                  <input class="slider is-fullwidth is-large is-info"
+                         id="pca1-slider-3d-stem"
+                         step="1" min="0" max="100" value="0" type="range">
+                </div>
+                
+                <!-- PCA Component 2 -->
+                <div class="pca-slider-container-3d-stem">
+                  <h4 class="title is-6 has-text-centered">PCA Component 2</h4>
+                  <div id="pca2-image-wrapper-3d-stem" class="pca-image-wrapper-3d-stem">
+                    Loading...
+                  </div>
+                  <input class="slider is-fullwidth is-large is-info"
+                         id="pca2-slider-3d-stem"
+                         step="1" min="0" max="100" value="0" type="range">
+                </div>
+                
+                <!-- PCA Component 3 -->
+                <div class="pca-slider-container-3d-stem">
+                  <h4 class="title is-6 has-text-centered">PCA Component 3</h4>
+                  <div id="pca3-image-wrapper-3d-stem" class="pca-image-wrapper-3d-stem">
+                    Loading...
+                  </div>
+                  <input class="slider is-fullwidth is-large is-info"
+                         id="pca3-slider-3d-stem"
+                         step="1" min="0" max="100" value="0" type="range">
+                </div>
+                
+                <!-- PCA Component 4 -->
+                <div class="pca-slider-container-3d-stem">
+                  <h4 class="title is-6 has-text-centered">PCA Component 4</h4>
+                  <div id="pca4-image-wrapper-3d-stem" class="pca-image-wrapper-3d-stem">
+                    Loading...
+                  </div>
+                  <input class="slider is-fullwidth is-large is-info"
+                         id="pca4-slider-3d-stem"
+                         step="1" min="0" max="100" value="0" type="range">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!--/ Interpolating 3D Stem PCA components. -->
+
+
+
+        <!-- Re-rendering. -->
+        <!-- <h3 class="title is-4">Re-rendering the input video</h3>
+        <div class="content has-text-justified">
+          <p>
+            Using <span class="dnerf">Nerfies</span>, you can re-render a video from a novel
+            viewpoint such as a stabilized camera by playing back the training deformations.
+          </p>
+        </div>
+        <div class="content has-text-centered">
+          <video id="replay-video"
+                 controls
+                 muted
+                 preload
+                 playsinline
+                 width="75%">
+            <source src="./static/videos/replay.mp4"
+                    type="video/mp4">
+          </video>
+        </div> -->
+        <!--/ Re-rendering. -->
+
+      </div>
+    </div>
+    <!--/ Learning From Real World Data. -->
+
+    <!-- Application-->
+     <div class="columns is-centered">
+      <div class="column is-full-width">
+        <h2 class="title is-3">Application</h2>
+
+
+        <!-- Model Editing. -->
+        <h3 class="title is-4">Model Editing</h3>
+        <div class="content has-text-justified">
+          <p>
+            We can edit the model by changing the parameters.
+          </p>
+        </div>
+        <!--/ Model Editing. -->
+
+        <!-- Reconstruction from Raw Point Cloud. -->
+        <h3 class="title is-4">Reconstruction from Raw Point Cloud</h3>
+        <div class="content has-text-justified">
+          <p>
+            We reconstruct the 3D model from the real-world data. We first use pretrained point-transformer to predict the segmentation for the input point cloud,
+            then fit each segment to the parametric model. Here the input point cloud is downsampled from the original point cloud for better visualization.
+          </p>
+          <!-- 3D Reconstruction Viewer -->
+          <div class="reconstruction-viewer-container">
+            <!-- Folder Selector -->
+            <div class="folder-selector has-text-centered" style="margin-bottom: 1rem;">
+              <div class="buttons has-addons is-centered">
+                <button class="button reconstruction-folder-btn is-light is-active" data-folder="15_i">
+                  <span class="icon">
+                    <i class="fas fa-folder"></i>
+                  </span>
+                  <span>15_i</span>
+                </button>
+                <button class="button reconstruction-folder-btn is-light" data-folder="27_o">
+                  <span class="icon">
+                    <i class="fas fa-folder"></i>
+                  </span>
+                  <span>27_o</span>
+                </button>
+                <button class="button reconstruction-folder-btn is-light" data-folder="65_i">
+                  <span class="icon">
+                    <i class="fas fa-folder"></i>
+                  </span>
+                  <span>65_i</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 3D Viewers Grid -->
+            <div class="columns is-multiline">
+              <!-- Ground Truth -->
+              <div class="column is-3">
+                <h4 class="title is-6 has-text-centered">Input</h4>
+                <div class="reconstruction-card">
+                  <div class="reconstruction-viewer" id="reconstruction-gt-viewer">
+                    <div class="viewer-loading">Loading ground truth...</div>
+                  </div>
+                  <p class="has-text-centered reconstruction-help"><small>Drag to rotate • Scroll to zoom</small></p>
+                </div>
+              </div>
+
+              <!-- L-system -->
+              <div class="column is-3">
+                <h4 class="title is-6 has-text-centered">L-system</h4>
+                <div class="reconstruction-card">
+                  <div class="reconstruction-viewer" id="reconstruction-lsys-viewer">
+                    <div class="viewer-loading">Loading L-system...</div>
+                  </div>
+                  <p class="has-text-centered reconstruction-help"><small>Drag to rotate • Scroll to zoom</small></p>
+                </div>
+              </div>
+
+              <!-- NKSR -->
+              <div class="column is-3">
+                <h4 class="title is-6 has-text-centered">NKSR</h4>
+                <div class="reconstruction-card">
+                  <div class="reconstruction-viewer" id="reconstruction-nksr-viewer">
+                    <div class="viewer-loading">Loading NKSR...</div>
+                  </div>
+                  <p class="has-text-centered reconstruction-help"><small>Drag to rotate • Scroll to zoom</small></p>
+                </div>
+              </div>
+
+              <!-- Our Model -->
+              <div class="column is-3">
+                <h4 class="title is-6 has-text-centered">Our Model</h4>
+                <div class="reconstruction-card">
+                  <div class="reconstruction-viewer" id="reconstruction-our-viewer">
+                    <div class="viewer-loading">Loading our model...</div>
+                  </div>
+                  <p class="has-text-centered reconstruction-help"><small>Drag to rotate • Scroll to zoom</small></p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!--/ Reconstruction from Raw Point Cloud. -->
+
+        <br/><br/>
+
+        <!-- Photosynthesis Simulation. -->
+        <h3 class="title is-4">Photosynthesis Simulation</h3>
+        <div class="content has-text-justified">
+          <p>
+            We can simulate the photosynthesis with the output mesh from Demeter in <a href="https://plantsimulationlab.github.io/Helios/">Helios</a>.
+          </p>
+          <video controls loop>
+            <source src="./static/videos/photosynthesis.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+          </video>
+        </div>
+        <!--/ Photosynthesis Simulation. -->
+
+        <br/><br/>
+
+
+
+
+      </div>
+     </div>
+     <!--/ Application -->
+
+
+     <!-- Assets Generation-->
+     <div class="columns is-centered">
+      <div class="column is-full-width">
+        <h2 class="title is-3">Assets Generation</h2>
+
+          <!-- Texture Extraction and Transfer. -->
+          <h3 class="title is-4">Texture Extraction and Transfer</h3>
+          <div class="content has-text-justified">
+            <p>
+              We can extract the texture from the real-world leaf scans, and transfer to other leaf shapes.
+            </p>
+            <img src="./static/images/texture.png" alt="Parameters" style="max-width: 100%; height: auto;">
+          </div>
+          <!--/ Texture Extraction and Transfer. -->
+
+          <br/><br/>
+
+      </div>
+     </div>
+     <!--/ Assets Generation-->
+
+
+    <!-- Concurrent Work. -->
+    <!-- <div class="columns is-centered">
+      <div class="column is-full-width">
+        <h2 class="title is-3">Related Links</h2>
+
+        <div class="content has-text-justified">
+          <p>
+            There's a lot of excellent work that was introduced around the same time as ours.
+          </p>
+          <p>
+            <a href="https://arxiv.org/abs/2104.09125">Progressive Encoding for Neural Optimization</a> introduces an idea similar to our windowed position encoding for coarse-to-fine optimization.
+          </p>
+          <p>
+            <a href="https://www.albertpumarola.com/research/D-NeRF/index.html">D-NeRF</a> and <a href="https://gvv.mpi-inf.mpg.de/projects/nonrigid_nerf/">NR-NeRF</a>
+            both use deformation fields to model non-rigid scenes.
+          </p>
+          <p>
+            Some works model videos with a NeRF by directly modulating the density, such as <a href="https://video-nerf.github.io/">Video-NeRF</a>, <a href="https://www.cs.cornell.edu/~zl548/NSFF/">NSFF</a>, and <a href="https://neural-3d-video.github.io/">DyNeRF</a>
+          </p>
+          <p>
+            There are probably many more by the time you are reading this. Check out <a href="https://dellaert.github.io/NeRF/">Frank Dellart's survey on recent NeRF papers</a>, and <a href="https://github.com/yenchenlin/awesome-NeRF">Yen-Chen Lin's curated list of NeRF papers</a>.
+          </p>
+        </div>
+      </div>
+    </div> -->
+    <!--/ Concurrent Work. -->
+
+  </div>
+</section>
+
+
+<section class="section" id="BibTeX">
+  <div class="container is-max-desktop content">
+    <h2 class="title">BibTeX</h2>
+    <pre><code>@article{cheng2025demeter,
+  author    = {Cheng, Tianhang and Zhai, Albert J. and Chen, Evan Z. and Zhou, Rui and Deng, Yawen and Li, Zitong and Zhao, Kejie and Shiu, Janice and Zhao, Qianyu and Xu, Yide and Wang, Xinlei and Shen, Yuan and Wang, Sheng and Ainsworth, Lisa and Guan, Kaiyu and Wang, Shenlong},
+  title     = {Demeter: A Parametric Model of Crop Plant Morphology from the Real World},
+  journal   = {ICCV},
+  year      = {2025},
+}</code></pre>
+  </div>
+</section>
+
+
+<footer class="footer">
+  <div class="container">
+    <div class="content has-text-centered">
+      <a class="icon-link"
+         href="./static/videos/nerfies_paper.pdf">
+        <i class="fas fa-file-pdf"></i>
+      </a>
+      <a class="icon-link" href="https://github.com/keunhong" class="external-link" disabled>
+        <i class="fab fa-github"></i>
+      </a>
+    </div>
+    <div class="columns is-centered">
+      <div class="column is-8">
+        <div class="content">
+          <p>
+            This website is licensed under a <a rel="license"
+                                                href="http://creativecommons.org/licenses/by-sa/4.0/">Creative
+            Commons Attribution-ShareAlike 4.0 International License</a>.
+          </p>
+          <p>
+            This means you are free to borrow the <a
+              href="https://github.com/nerfies/nerfies.github.io">source code</a> of this website,
+            we just ask that you link back to this page in the footer.
+            Please remember to remove the analytics code included in the header of the website which
+            you do not want on your website.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
