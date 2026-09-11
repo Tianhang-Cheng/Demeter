@@ -90,9 +90,19 @@ rather than 74%. Scores for all three are in the
 the fit downstream has not been re-tuned for anything but `spacing`.
 
 Omit `--no-viz` for interactive visualization. Fitting may take roughly a minute
-per organ, depending on the point count and GPU. Outputs include `graph.pkl`,
-`params/plant_graph.pth`, `params/info/{parent,class}.txt`, individual fits in
-`fit/`, and the reconstructed triangle mesh `predict.ply`.
+per organ, depending on the point count and GPU. It writes:
+
+| | |
+| --- | --- |
+| `graph.pkl`, `params/plant_graph.pth` | the fitted Demeter parameters |
+| `params/info/{class,parent}.txt` | organ classes and topology |
+| `fit/` | the individual organ fits |
+| `predict.ply` | the reconstructed mesh |
+
+`params/` is a complete Demeter instance, not just a rendering: Step 4 below
+regenerates the same mesh from it, so the parameters can be edited, simulated or
+re-decoded. Verified on `2_i`, where `decoded.ply` and `predict.ply` agree at
+21,726 vertices and 41,376 triangles.
 
 ## Step 4: decode again
 
@@ -131,3 +141,23 @@ Removed points are assigned to the nearest cluster:
 The fitted reconstruction is compared with the input:
 
 <img src="../assets/recon.png" alt="Reconstruction" width="300">
+
+## Viewing results on a headless machine
+
+Two steps here want a display, and only one has to have it.
+`normalize_data.py` is genuinely interactive, but it saves the two clicks to
+`rotation_click.txt` and reuses that file on later runs — pick them once where
+you have a screen, copy the file next to the scan, and the rest is headless.
+
+Viewing is the other. `decode.py` and `viz_segmentation.py` open an Open3D
+window and fail without a display. Render the run offscreen with EGL instead:
+
+```bash
+python script_point_transformer/viz_predictions.py --reconstruction outputs/reconstruction/65_i
+```
+
+That writes `viz/index.html` and PNGs beside the run — input scan, predicted
+organs, grouped instances, boundary score and the fitted mesh, each from two
+angles. Copy the directory back with `rsync`, or serve it in place with
+`python -m http.server` and forward that one port. Use `--run` instead for a
+training run, which adds per-plant metrics against the ground truth.

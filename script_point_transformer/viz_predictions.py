@@ -56,19 +56,25 @@ def render(coord, colors, width, height, point_size, azimuths, elevation):
     material.shader = "defaultUnlit"
     material.point_size = point_size
     renderer.scene.add_geometry("cloud", cloud, material)
+    images = _orbit(renderer, coord, width, height, azimuths, elevation)
+    del renderer
+    return images
 
-    low, high = coord.min(axis=0), coord.max(axis=0)
+
+def _orbit(renderer, points, width, height, azimuths, elevation):
+    """Frame the points tightly from each azimuth and render; returns uint8 images."""
+    points = np.asarray(points, dtype=np.float64)
+    low, high = points.min(axis=0), points.max(axis=0)
     center = (low + high) / 2
     corners = np.array(np.meshgrid(*zip(low - center, high - center))).reshape(3, -1).T
-    up = np.array([0.0, 0.0, 1.0])
+    # Preprocessing stands the plant up on +X, so that is the screen's up.
+    up = np.array([1.0, 0.0, 0.0])
     tan_v = np.tan(np.radians(FOV) / 2)
     tan_h = tan_v * width / height
     images = []
     for azimuth in azimuths:
         a, e = np.radians(azimuth), np.radians(elevation)
-        # Preprocessing leaves the main stem along +Z, so orbit around Z.
-        direction = np.array([np.cos(e) * np.cos(a), np.cos(e) * np.sin(a), np.sin(e)])
-        # Fit the box tightly in this view: distance covers both screen axes plus depth.
+        direction = np.array([np.sin(e), np.cos(e) * np.cos(a), np.cos(e) * np.sin(a)])
         right = np.cross(-direction, up)
         right /= np.linalg.norm(right)
         screen_up = np.cross(right, -direction)
@@ -76,7 +82,6 @@ def render(coord, colors, width, height, point_size, azimuths, elevation):
                               np.abs(corners @ right).max() / tan_h) + (corners @ direction).max()
         renderer.setup_camera(FOV, center, center + direction * distance, up)
         images.append(np.asarray(renderer.render_to_image()))
-    del renderer
     return images
 
 
@@ -224,9 +229,130 @@ def find_ground_truth(name, data_root):
     raise FileNotFoundError(f"No prepared ground truth for {name} under {data_root}")
 
 
+def render_mesh(path, width, height, azimuths, elevation):
+    """Render a fitted mesh the same way the clouds are rendered, offscreen."""
+    mesh = o3d.io.read_triangle_mesh(str(path))
+    if mesh.is_empty():
+        return []
+    mesh.compute_vertex_normals()
+    if not mesh.has_vertex_colors():
+        mesh.paint_uniform_color([0.45, 0.72, 0.42])
+    renderer = o3d.visualization.rendering.OffscreenRenderer(width, height)
+    renderer.scene.set_background([1.0, 1.0, 1.0, 1.0])
+    material = o3d.visualization.rendering.MaterialRecord()
+    material.shader = "defaultLit"
+    renderer.scene.add_geometry("mesh", mesh, material)
+    renderer.scene.scene.set_sun_light([-0.3, -0.4, -0.9], [1.0, 1.0, 1.0], 90000)
+    images = _orbit(renderer, np.asarray(mesh.vertices), width, height, azimuths, elevation)
+    del renderer
+    return images
+
+
+def report_reconstruction(folder, output, args):
+    """Offscreen report for one reconstruction directory -- no ground truth needed.
+
+    `run.py infer --reconstruct` leaves predictions and a fitted mesh but nothing
+    to look at without a display, and the repository's other viewers open an
+    interactive Open3D window. This renders the same stages to PNGs and an
+    index.html, so a run on a remote machine can still be inspected.
+    """
+    sample = torch.load(folder / "normalized_pcd.pth", map_location="cpu", weights_only=False)
+    coord = np.asarray(sample["coord"], dtype=np.float32)
+    colour = np.asarray(sample["color"], dtype=np.float32)
+    semantic = np.load(folder / "normalized_pcd_pred.npy").reshape(-1)
+    distance = np.load(folder / "normalized_pcd_pred_dist.npy").reshape(-1)
+    organs, _, _ = instance_labels(coord, distance, semantic, args.instance_eps)
+
+    keep = np.arange(len(coord))
+    if len(coord) > args.max_points:
+        keep = np.random.default_rng(2025).choice(len(coord), args.max_points, replace=False)
+    panels = {
+        "rgb": colour[keep],
+        "pred_semantic": CLASS_COLORS[semantic[keep]],
+        "pred_instance": instance_colors(organs[keep]),
+        "pred_dist": heat(distance[keep]),
+    }
+    output.mkdir(parents=True, exist_ok=True)
+    views = {}
+    for panel, colours in panels.items():
+        images = render(coord[keep], colours, args.width, args.height, args.point_size,
+                        args.azimuths, args.elevation)
+        views[panel] = _write_images(output, folder.name, panel, images)
+    mesh_path = folder / "predict.ply"
+    if mesh_path.is_file():
+        views["mesh"] = _write_images(output, folder.name, "mesh",
+                                      render_mesh(mesh_path, args.width, args.height,
+                                                  args.azimuths, args.elevation))
+    counts = np.bincount(semantic, minlength=len(CLASS_NAMES))
+    summary = dict(name=folder.name, points=int(len(coord)),
+                   organs=int(len(np.unique(organs[organs >= 0]))),
+                   assigned=float((organs >= 0).mean()),
+                   per_class={n: int(c) for n, c in zip(CLASS_NAMES, counts)},
+                   mesh=mesh_path.is_file(), views=views)
+    (output / "metrics.json").write_text(json.dumps(summary, indent=2))
+    (output / "index.html").write_text(build_reconstruction_page(folder, summary))
+    print(f"{folder.name}: {summary['points']:,} points, {summary['organs']} organs, "
+          f"{100 * summary['assigned']:.0f}% assigned"
+          + ("" if summary["mesh"] else "; no predict.ply yet"))
+    print(f"Wrote {output / 'index.html'}")
+
+
+def _write_images(output, name, panel, images):
+    files = []
+    for index, image in enumerate(images):
+        relative = f"{name}_{panel}_v{index}.png"
+        o3d.io.write_image(str(output / relative), o3d.geometry.Image(image))
+        files.append(relative)
+    return files
+
+
+RECONSTRUCTION_PANELS = [
+    ("rgb", "Scan RGB"),
+    ("pred_semantic", "Predicted organs"),
+    ("pred_instance", "Grouped instances"),
+    ("pred_dist", "Boundary score"),
+    ("mesh", "Fitted Demeter mesh"),
+]
+
+
+def build_reconstruction_page(folder, summary):
+    legend = "".join(
+        f'<span class="chip"><i style="background:rgb({int(c[0]*255)},{int(c[1]*255)},{int(c[2]*255)})"></i>'
+        f'{n} ({summary["per_class"][n]:,})</span>'
+        for n, c in zip(CLASS_NAMES, CLASS_COLORS) if summary["per_class"][n])
+    panels = "".join(
+        f"<figure><figcaption>{label}</figcaption>"
+        + "".join(f"<img src='{f}' loading='lazy' alt='{label}'>" for f in summary["views"][key])
+        + "</figure>"
+        for key, label in RECONSTRUCTION_PANELS if key in summary["views"])
+    return f"""<!doctype html>
+<meta charset="utf-8"><title>{summary['name']} reconstruction</title>
+<style>
+body {{ font: 14px/1.5 system-ui, sans-serif; margin: 0 auto; padding: 24px; max-width: 1400px; color: #1b1b1f; }}
+h1 {{ margin: 0 0 4px; font-size: 22px; }}
+p.meta {{ color: #5c5c66; margin: 0 0 18px; }}
+.chip {{ display: inline-flex; align-items: center; gap: 6px; margin-right: 14px; }}
+.chip i {{ width: 12px; height: 12px; border-radius: 3px; display: inline-block; }}
+.panels {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 16px; }}
+figure {{ margin: 0; }}
+figcaption {{ font-weight: 600; margin-bottom: 4px; }}
+img {{ width: 100%; max-width: 100%; border: 1px solid #e3e3e8; border-radius: 6px; background: #fff; }}
+</style>
+<h1>{summary['name']}</h1>
+<p class="meta">{folder} &middot; {summary['points']:,} points &middot; {summary['organs']} organs
+&middot; {100 * summary['assigned']:.0f}% of points assigned
+&middot; {'fitted mesh included' if summary['mesh'] else 'no fitted mesh'}</p>
+<p>{legend}</p>
+<div class="panels">{panels}</div>
+"""
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--run", type=Path, required=True, help="Run directory holding result/")
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--run", type=Path, help="Training run directory holding result/")
+    source.add_argument("--reconstruction", type=Path,
+                        help="A run.py infer output directory; renders without ground truth")
     parser.add_argument("--data-root", type=Path, default=REPO / "data/point_transformer/soybean")
     parser.add_argument("--output", type=Path, default=None, help="Defaults to <run>/viz")
     parser.add_argument("--samples", nargs="*", default=None, help="Plant names; default all found")
@@ -242,6 +368,11 @@ def main():
                              "plants; spacing reproduces recon.py; fixed makes the DBSCAN "
                              "radius independent of point density")
     args = parser.parse_args()
+
+    if args.reconstruction:
+        folder = args.reconstruction.resolve()
+        report_reconstruction(folder, (args.output or folder / "viz").resolve(), args)
+        return
 
     run = args.run.resolve()
     result = run / "result"

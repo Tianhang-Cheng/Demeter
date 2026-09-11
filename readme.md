@@ -131,12 +131,19 @@ Monocular RGB video -> Raw 3D point clouds \
 
 + Step 2, Option B: automatic multi-stage 3D point clouds -> Demeter parameters \
 [script_auto_reconstruction/readme.md](script_auto_reconstruction/readme.md)
+
+```bash
+# normalize point cloud
+python script_auto_reconstruction/normalize_data.py --point_path sample_point_cloud/val/65_i/pcd.ply
+
+# infer & fit mesh
+python script_point_transformer/run.py infer --sample sample_point_cloud/val/65_i/normalized_pcd.pth --weight third_party/PointTransformer_V3/Pointcept/exp/soybean3d/plant3/model/model_last.pth --output outputs/reconstruction/65_i --reconstruct
+```
+
+Writes the fitted Demeter parameters to `params/` and the mesh to `predict.ply`.
+The checkpoint download and headless viewing are in the same guide.
 Prepared PointTransformer data (**67 train / 11 test**, 2.24 GB) is available on [Hugging Face](https://huggingface.co/datasets/TianhangCheng7/DemeterData/tree/main/point_transformer). See the [training guide](script_point_transformer/readme.md) for download commands and training.
 Note that this method is not accurate, so it's more recommanded to use manual segementation
-
-+ Step 2, Option C: automatic feed-forward one-pass 3D point clouds -> Demeter parameters \
-Working in progress.
-
 + Others: raw 3D point clouds -> baseline L-system parameteres \
 [third_party/CropCraft/readme.md](third_party/CropCraft/readme.md)
 
@@ -146,7 +153,7 @@ Please refer to [Helios Tutorial](https://github.com/PlantSimulationLab/PyHelios
 
 ## 4. Release Note
 
-- [ ] editing tutorial (TBD)
+- [x] Training and inference code with our point transformer for soybean (2026-9-10)
 - [x] full soybean 2d image dataset (2026-8-13)
 - [x] learning leaf shape PCA from 2D leaf scanns (2026-5-26)
 - [x] release 3D leaf deformation arrays for 3D leaf PCA training (2026-8-13)
