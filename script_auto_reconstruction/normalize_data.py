@@ -206,7 +206,8 @@ def process_data(path: str, no_scale: bool = False):
     
     sample_num = 300000
     sample_num = min(sample_num, len(data['coord']))
-    sample_mask = np.random.choice(len(data['coord']), sample_num, replace=False)
+    # seeded so a re-run keeps the point order any saved prediction is indexed by
+    sample_mask = np.random.RandomState(0).choice(len(data['coord']), sample_num, replace=False)
     for key in data.keys():
         data[key] = data[key][sample_mask]
     data = {k: torch.tensor(v) for k, v in data.items()}

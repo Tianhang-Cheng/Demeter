@@ -224,8 +224,9 @@ class CheckpointLoader(HookBase):
             weight = OrderedDict()
             for key, value in checkpoint["state_dict"].items():
                 if not key.startswith("module."):
-                    if comm.get_world_size() > 1:
-                        key = "module." + key  # xxx.xxx -> module.xxx.xxx
+                    # A single-GPU checkpoint has no prefix; add it here too, or the
+                    # strip below cuts real key names and nothing loads.
+                    key = "module." + key  # xxx.xxx -> module.xxx.xxx
                 # Now all keys contain "module." no matter DDP or not.
                 if self.keywords in key:
                     key = key.replace(self.keywords, self.replacement)

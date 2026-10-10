@@ -141,15 +141,16 @@ matching the original infinity handling. Missing RGB is filled with gray.
 `--keep-black` explicitly changes the filtering behavior. Degenerate plants
 with zero density threshold fail with an error.
 
-The fitted root quaternion aligns the main stem to **+Z**, which is what all 78
-released plants come out as (the main stem's principal axis is within 17 degrees
-of +Z on every one). Coordinates are centered at the retained points' mean and
-divided by the sorted 95th-percentile radius computed from all original points
-around their mean. Normals are estimated in normalized coordinates (radius 0.1,
-at most 30 neighbors). Distances and `T` are both computed before scaling, so
-their ratio is scale invariant. Use `--alignment none` only for input already
-aligned to +Z. Note that `config.py`'s augmentation rotates about x as though the
-stem were along that axis; [`config_fixed.py`](config_fixed.py) corrects it.
+The fitted root quaternion aligns the main stem to +Z (decode.py's canonical
+frame), and `--stem-axis x` (the default) rotates it onto **+X**, the frame the
+released checkpoint and `normalize_data.py` use; `--stem-axis z` stops at +Z.
+Only the axis is fixed, not its sign: about half the plants have their apex
+toward −X, and the network is trained on both. Coordinates are
+centered at the retained points' mean and divided by the sorted 95th-percentile
+radius computed from all original points around their mean. Normals are
+estimated in normalized coordinates (radius 0.1, at most 30 neighbors).
+Distances and `T` are both computed before scaling, so their ratio is scale
+invariant. Use `--alignment none` only for input already aligned to +X.
 
 | Field | Shape / type | Meaning |
 | --- | --- | --- |
@@ -214,13 +215,12 @@ without launching Pointcept or writing outputs.
 
 `--recipe released` (the default) reproduces the published config exactly and is
 what the released checkpoint was trained with. `--recipe fixed` selects
-[`config_fixed.py`](config_fixed.py), which corrects three defects measured in
+[`config_fixed.py`](config_fixed.py), which corrects two defects measured in
 that config and inherits everything else unchanged:
 
 | | released | fixed |
 | --- | --- | --- |
 | colour units | `[0, 1]` data through `[0, 255]` transforms | `color_scale=255.0` |
-| azimuth rotation | ±180° about **x**, while plants align to +Z | ±180° about **z** |
 | boundary loss | MSE on the logit clipped to `[0, 1]` | `binary_cross_entropy_with_logits` |
 
 The colour defect is the largest: `ChromaticJitter` added noise with std 9.39 on
@@ -393,6 +393,10 @@ scans split their organs. `fixed` removes the density dependence and corrects th
 count, but not the IoU. `graph-cut` drops the deletion step, which is what caps both:
 it cuts kNN edges that straddle a junction or a class change, so every point keeps an
 organ.
+
+`fixed` and `graph-cut` use a 0.004 voxel grid (unit radius) as a floor; on a
+cloud sparser than ours it widens to the median nearest-neighbour spacing, and the
+other grouping constants scale with it. Every released plant stays on the floor.
 
 None of the three fixes the real limit. Per-organ IoU is bimodal — 34% of organs land
 above 0.75 and 29% below 0.25, the latter being the thin petioles, which fragment.

@@ -11,7 +11,7 @@ Use the Linux/CUDA `demeter` environment from the [main README](../readme.md#2-r
 
 ```bash
 conda activate demeter
-pip install torch_scatter torch_cluster torch_geometric==2.5.3 addict SharedArray yapf==0.30.0 tensorboard
+pip install torch_scatter torch_cluster torch_geometric==2.5.3 addict SharedArray yapf==0.30.0 tensorboard tensorboardX einops timm
 pip install third_party/PointTransformer_V3/Pointcept/libs/pointops
 ```
 

@@ -38,6 +38,12 @@ FIXED_EPS = 0.012
 GRAPH_CUT_KEEP = 0.25
 GRAPH_CUT_NEIGHBOURS = 16
 GRAPH_CUT_LINK = 3.0
+# The grid above is the floor for our scans, whose median nearest-neighbour
+# spacing is 0.0005-0.0028. A sparser cloud gets a grid this many spacings wide,
+# and the eps, the edge cutoff and the minimum organ size follow the grid. 1.0
+# beat 0.6, 0.8 and 1.4 across downsampled held-out plants for both methods.
+GRID_SPACING_SCALE = 1.0
+MIN_CLUSTER_FLOOR = 3
 
 
 def boundary_threshold(species):
@@ -56,6 +62,30 @@ def density_threshold(coord, k=10, kdtree=None, batch=100_000):
         distance, _ = tree.query(coord[start:start + batch], k=k, workers=-1)
         spacings.append(np.nan_to_num(distance, nan=0.0, posinf=0.0).max(axis=-1))
     return float(np.concatenate(spacings).mean() * 2)
+
+
+def median_spacing(coord, kdtree=None, sample=50_000):
+    """Median nearest-neighbour distance, queried from a fixed subsample of points."""
+    tree = kdtree if kdtree is not None else cKDTree(coord)
+    query = coord
+    if len(coord) > sample:
+        query = coord[np.random.RandomState(0).choice(len(coord), sample, replace=False)]
+    return float(np.median(tree.query(query, k=2, workers=-1)[0][:, 1]))
+
+
+def grouping_grid(coord, kdtree=None):
+    """Voxel size for `fixed` and `graph_cut`, and the organ size in voxels.
+
+    `FIXED_GRID` assumes our scanning density; on a cloud about 10x sparser a
+    voxel holds at most one point, almost no kNN edge passes the cutoff and every
+    component falls under the minimum size. So the grid grows with the measured
+    spacing once that exceeds the floor, and the minimum organ keeps its area.
+    On every released plant the floor wins, so their results do not change.
+    """
+    grid = max(FIXED_GRID, GRID_SPACING_SCALE * median_spacing(coord, kdtree))
+    min_cluster = max(MIN_CLUSTER_FLOOR,
+                      int(round(MIN_CLUSTER * (FIXED_GRID / grid) ** 2)))
+    return grid, min_cluster
 
 
 def _voxelise(coord, grid):
@@ -96,7 +126,9 @@ def group_organs(coord, boundary_score, semantic=None, species="soybean",
     if method == "graph_cut":
         if semantic is None:
             raise ValueError("graph_cut needs predicted semantics")
-        return _graph_cut(coord, score, np.asarray(semantic).reshape(-1))
+        grid, min_cluster = grouping_grid(coord, kdtree)
+        return _graph_cut(coord, score, np.asarray(semantic).reshape(-1),
+                          grid, min_cluster)
 
     keep = score < threshold
     if not keep.any():
@@ -109,14 +141,15 @@ def group_organs(coord, boundary_score, semantic=None, species="soybean",
         if semantic is None:
             raise ValueError("fixed needs predicted semantics")
         inside = coord[keep]
-        first, inverse = _voxelise(inside, FIXED_GRID)
+        grid, min_cluster = grouping_grid(coord, kdtree)
+        first, inverse = _voxelise(inside, grid)
         centres = inside[first]
         classes = np.asarray(semantic).reshape(-1)[keep][first]
         voxel = np.full(len(centres), -1, dtype=np.int64)
         nxt = 0
         for cls in np.unique(classes):
             part = classes == cls
-            found = DBSCAN(eps=FIXED_EPS, min_samples=MIN_CLUSTER,
+            found = DBSCAN(eps=FIXED_EPS * grid / FIXED_GRID, min_samples=min_cluster,
                            n_jobs=-1).fit_predict(centres[part])
             voxel[part] = np.where(found >= 0, found + nxt, -1)
             if (found >= 0).any():
@@ -127,7 +160,7 @@ def group_organs(coord, boundary_score, semantic=None, species="soybean",
     return _compact(labels)
 
 
-def _graph_cut(coord, score, semantic, grid=FIXED_GRID):
+def _graph_cut(coord, score, semantic, grid=FIXED_GRID, min_cluster=MIN_CLUSTER):
     first, inverse = _voxelise(coord, grid)
     centres, centre_score, classes = coord[first], score[first], semantic[first]
     distance, index = cKDTree(centres).query(centres, k=GRAPH_CUT_NEIGHBOURS + 1,
@@ -141,7 +174,7 @@ def _graph_cut(coord, score, semantic, grid=FIXED_GRID):
                        shape=(len(centres),) * 2)
     _, found = connected_components(graph, directed=False)
     sizes = np.bincount(found)
-    found = np.where(sizes[found] >= MIN_CLUSTER, found, -1)
+    found = np.where(sizes[found] >= min_cluster, found, -1)
     return _compact(found)[inverse]
 
 

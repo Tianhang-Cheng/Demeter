@@ -9,6 +9,10 @@ third_party/2d-gaussian-splatting/install
 
 demeter.egg-info
 
+# Locally compiled extensions; they only load on the machine that built them.
+*.pyd
+*.so
+
 /build_dynamic
 
 # Reproducible generated datasets and experiment outputs.
