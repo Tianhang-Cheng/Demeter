@@ -48,3 +48,5 @@ demeter.egg-info
 /temp.py
 /viz_together.py
 /build_transforms.py
+
+/.pages-site/
